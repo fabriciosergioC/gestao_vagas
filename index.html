@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Controle de Estacionamento</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Menu Lateral -->
+<div class="sidebar">
+  <h2>🅿️ Controle de Estacionamento</h2>
+  <button class="menu-btn active" onclick="showSection('entrada')">🚗 Entrada de Veículos</button>
+  <button class="menu-btn" onclick="showSection('patio')">🅿️ Pátio</button>
+  <button class="menu-btn" onclick="showSection('saida')">💰 Saída / Pagamento</button>
+  <button class="menu-btn" onclick="showSection('historico')">📊 Histórico</button>
+  <button class="menu-btn" onclick="showSection('configuracoes')">⚙️ Configurações</button>
+</div>
+
+<!-- Conteúdo Principal -->
+<div class="main-content">
+
+  <!-- Seção: Entrada -->
+  <div id="entrada" class="section active">
+    <h1>🚗 Entrada de Veículos</h1>
+
+    <div class="form-group">
+      <h3 style="margin-bottom: 15px;">Registrar Entrada</h3>
+      <div class="form-row">
+        <input type="text" id="veiculoPlaca" placeholder="Placa do Veículo" style="text-transform: uppercase;" maxlength="8">
+        <select id="veiculoMarca" onchange="atualizarModelos()">
+          <option value="">Selecione a marca...</option>
+          <option value="Chevrolet">Chevrolet</option>
+          <option value="Volkswagen">Volkswagen</option>
+          <option value="Fiat">Fiat</option>
+          <option value="Ford">Ford</option>
+          <option value="Toyota">Toyota</option>
+          <option value="Honda">Honda</option>
+          <option value="Hyundai">Hyundai</option>
+          <option value="Nissan">Nissan</option>
+          <option value="Renault">Renault</option>
+          <option value="Peugeot">Peugeot</option>
+          <option value="Citroën">Citroën</option>
+          <option value="Jeep">Jeep</option>
+          <option value="BMW">BMW</option>
+          <option value="Mercedes">Mercedes</option>
+          <option value="Audi">Audi</option>
+          <option value="Mitsubishi">Mitsubishi</option>
+          <option value="Kia">Kia</option>
+          <option value="Outra">Outra</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <select id="veiculoModelo" onchange="preencherModeloOutro()">
+          <option value="">Selecione a marca primeiro...</option>
+        </select>
+        <input type="text" id="veiculoModeloOutro" placeholder="Digite o modelo (Outra)" style="display: none;">
+      </div>
+      <div class="form-row">
+        <input type="text" id="veiculoCor" placeholder="Cor">
+        <select id="veiculoTipo">
+          <option value="carro">🚗 Carro</option>
+          <option value="moto">🏍️ Moto</option>
+          <option value="caminhao">🚚 Caminhão</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <input type="text" id="veiculoProprietario" placeholder="Nome do Proprietário (opcional)">
+        <input type="tel" id="veiculoTelefone" placeholder="Telefone (opcional)">
+      </div>
+      <div class="form-row">
+        <select id="veiculoVaga">
+          <option value="">Selecione uma vaga...</option>
+        </select>
+      </div>
+      <button class="btn-primary" onclick="registrarEntrada()">✅ Confirmar Entrada</button>
+    </div>
+
+    <div class="form-group">
+      <h3 style="margin-bottom: 15px;">Vagas Disponíveis</h3>
+      <div class="vagas-info" id="vagasInfo"></div>
+    </div>
+  </div>
+
+  <!-- Seção: Pátio -->
+  <div id="patio" class="section">
+    <h1>🅿️ Pátio - Veículos Estacionados</h1>
+
+    <div class="form-group">
+      <div class="form-row">
+        <input type="text" id="buscaPatio" placeholder="Buscar por placa ou modelo..." onkeyup="renderPatio()">
+        <select id="filtroTipoPatio" onchange="renderPatio()">
+          <option value="">Todos os tipos</option>
+          <option value="carro">🚗 Carros</option>
+          <option value="moto">🏍️ Motos</option>
+          <option value="caminhao">🚚 Caminhões</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="statTotalVeiculos">0</div>
+        <div class="stat-label">Veículos no Pátio</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statVagasOcupadas">0</div>
+        <div class="stat-label">Vagas Ocupadas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statVagasLivres" style="color: #27ae60;">0</div>
+        <div class="stat-label">Vagas Livres</div>
+      </div>
+    </div>
+
+    <table id="tabelaPatio">
+      <thead>
+        <tr>
+          <th>Placa</th>
+          <th>Marca/Modelo</th>
+          <th>Cor</th>
+          <th>Tipo</th>
+          <th>Vaga</th>
+          <th>Entrada</th>
+          <th>Tempo</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Seção: Saída -->
+  <div id="saida" class="section">
+    <h1>💰 Saída / Pagamento</h1>
+
+    <div class="form-group">
+      <h3 style="margin-bottom: 15px;">Buscar Veículo para Saída</h3>
+      <div class="form-row">
+        <input type="text" id="buscaSaida" placeholder="Digite a placa do veículo..." onkeyup="buscarVeiculoSaida()">
+        <button class="btn-info" onclick="buscarVeiculoSaida()">🔍 Buscar</button>
+      </div>
+      <div id="resultadoBusca"></div>
+    </div>
+
+    <div id="areaPagamento" style="display: none;">
+      <div class="form-group">
+        <h3 style="margin-bottom: 15px;">Dados do Veículo</h3>
+        <div class="veiculo-info">
+          <p><strong>Placa:</strong> <span id="infoPlaca"></span></p>
+          <p><strong>Modelo:</strong> <span id="infoModelo"></span></p>
+          <p><strong>Cor:</strong> <span id="infoCor"></span></p>
+          <p><strong>Tipo:</strong> <span id="infoTipo"></span></p>
+          <p><strong>Vaga:</strong> <span id="infoVaga"></span></p>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <h3 style="margin-bottom: 15px;">Cálculo do Valor</h3>
+        <div class="calculo-info">
+          <p><strong>Entrada:</strong> <span id="calcEntrada"></span></p>
+          <p><strong>Saída:</strong> <span id="calcSaida"></span></p>
+          <p><strong>Tempo Permanecido:</strong> <span id="calcTempo"></span></p>
+          <p><strong>Valor por Hora:</strong> <span id="calcValorHora"></span></p>
+          <p class="valor-total"><strong>TOTAL A PAGAR:</strong> <span id="calcTotal">R$ 0,00</span></p>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <h3 style="margin-bottom: 15px;">Forma de Pagamento</h3>
+        <div class="form-row">
+          <select id="formaPagamento">
+            <option value="dinheiro">💵 Dinheiro</option>
+            <option value="pix">📱 PIX</option>
+            <option value="cartao">💳 Cartão</option>
+          </select>
+        </div>
+        <div style="margin-top: 15px; display: flex; gap: 10px;">
+          <button class="btn-primary" onclick="confirmarSaida()">✅ Confirmar Saída</button>
+          <button class="btn-warning" onclick="cancelarSaida()">❌ Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Seção: Histórico -->
+  <div id="historico" class="section">
+    <h1>📊 Histórico de Movimentações</h1>
+
+    <div class="form-group">
+      <div class="form-row">
+        <input type="date" id="dataInicio" onchange="renderHistorico()">
+        <input type="date" id="dataFim" onchange="renderHistorico()">
+        <input type="text" id="buscaHistorico" placeholder="Buscar por placa..." onkeyup="renderHistorico()">
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="statTotalSaidas">0</div>
+        <div class="stat-label">Total de Saídas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statFaturamento" style="color: #27ae60;">R$ 0,00</div>
+        <div class="stat-label">Faturamento</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statTicketMedio">R$ 0,00</div>
+        <div class="stat-label">Ticket Médio</div>
+      </div>
+    </div>
+
+    <table id="tabelaHistorico">
+      <thead>
+        <tr>
+          <th>Placa</th>
+          <th>Marca/Modelo</th>
+          <th>Tipo</th>
+          <th>Entrada</th>
+          <th>Saída</th>
+          <th>Tempo</th>
+          <th>Valor</th>
+          <th>Pagamento</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Seção: Configurações -->
+  <div id="configuracoes" class="section">
+    <h1>⚙️ Configurações</h1>
+
+    <div class="form-group">
+      <h3 style="margin-bottom: 15px;">Valores por Hora</h3>
+      <div class="form-row">
+        <label>🚗 Carro:</label>
+        <input type="number" id="valorHoraCarro" placeholder="R$" step="0.50" value="10.00">
+      </div>
+      <div class="form-row">
+        <label>🏍️ Moto:</label>
+        <input type="number" id="valorHoraMoto" placeholder="R$" step="0.50" value="5.00">
+      </div>
+      <div class="form-row">
+        <label>🚚 Caminhão:</label>
+        <input type="number" id="valorHoraCaminhao" placeholder="R$" step="0.50" value="20.00">
+      </div>
+      <button class="btn-primary" onclick="salvarValores()">💾 Salvar Valores</button>
+    </div>
+
+    <div class="form-group">
+      <h3 style="margin-bottom: 15px;">Quantidade de Vagas</h3>
+      <div class="form-row">
+        <label>Total de Vagas:</label>
+        <input type="number" id="totalVagas" placeholder="Número de vagas" value="20">
+      </div>
+      <button class="btn-primary" onclick="salvarVagas()">💾 Salvar Vagas</button>
+    </div>
+
+    <div class="form-group">
+      <h3 style="margin-bottom: 15px;">Nome do Estacionamento</h3>
+      <div class="form-row">
+        <input type="text" id="nomeEstacionamento" placeholder="Nome do estabelecimento" style="flex: 2;">
+      </div>
+      <button class="btn-primary" onclick="salvarNomeEstacionamento()">💾 Salvar</button>
+    </div>
+
+    <div class="form-group">
+      <h3 style="margin-bottom: 15px;">Backup dos Dados</h3>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn-info" onclick="exportarDados()">📥 Exportar Dados</button>
+        <button class="btn-warning" onclick="document.getElementById('importFile').click()">📤 Importar Dados</button>
+        <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importarDados(this)">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <h3 style="margin-bottom: 15px; color: #e74c3c;">⚠️ Zona de Perigo</h3>
+      <button class="btn-danger" onclick="limparHistorico()">🗑️ Limpar Histórico</button>
+      <button class="btn-danger" onclick="resetarSistema()" style="margin-left: 10px;">⚠️ Resetar Todo o Sistema</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
