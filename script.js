@@ -154,70 +154,54 @@ function gerarVagas() {
 }
 
 function renderVagas() {
-  const selectVaga = document.getElementById('veiculoVaga');
-  const vagasInfo = document.getElementById('vagasInfo');
+  const container = document.getElementById('vagasContainer');
+  const vagaSelecionada = document.getElementById('veiculoVaga')?.value;
   
-  if (!selectVaga) {
-    console.error('Select de vagas não encontrado!');
+  if (!container) {
+    console.error('Container de vagas não encontrado!');
     return;
   }
-  
-  // Preencher o select
-  const vagaAtual = selectVaga.value;
-  selectVaga.innerHTML = '<option value="">Selecione uma vaga...</option>';
-  
+
+  container.innerHTML = '';
   const vagas = gerarVagas();
-  
+
+  if (vagas.length === 0) {
+    container.innerHTML = '<p style="color: #fff; grid-column: 1/-1; text-align: center;">Nenhuma vaga configurada!</p>';
+    return;
+  }
+
   vagas.forEach(vaga => {
-    if (!vaga.ocupada) {
-      const option = document.createElement('option');
-      option.value = vaga.numero;
-      option.innerText = `Vaga ${vaga.numero}`;
-      selectVaga.appendChild(option);
+    const div = document.createElement('div');
+    div.className = `vaga-card ${vaga.ocupada ? 'ocupada' : 'livre'} ${vaga.numero === vagaSelecionada ? 'selecionada' : ''}`;
+    
+    if (vaga.ocupada) {
+      div.title = `Ocupada por ${vaga.veiculo.placa}`;
+    } else {
+      div.title = `Vaga ${vaga.numero} - Livre`;
+      div.onclick = () => selecionarVaga(vaga.numero);
     }
+    
+    div.innerHTML = `
+      <div class="vaga-numero">${vaga.numero}</div>
+      <div class="vaga-status">${vaga.ocupada ? 'Ocupada' : 'Livre'}</div>
+      ${vaga.ocupada ? `<div class="vaga-placa">${vaga.veiculo.placa}</div>` : ''}
+    `;
+    container.appendChild(div);
   });
+}
+
+function selecionarVaga(numero) {
+  const vagaElement = document.getElementById('veiculoVaga');
+  const vagaAtual = vagaElement?.value;
   
-  // Manter seleção atual se ainda válida
-  if (vagaAtual && !vagas.find(v => v.numero === vagaAtual && v.ocupada)) {
-    selectVaga.value = vagaAtual;
+  // Se clicar na mesma vaga, desseleciona
+  if (vagaAtual === numero) {
+    vagaElement.value = '';
+  } else {
+    vagaElement.value = numero;
   }
   
-  // Atualizar painel de informações
-  if (vagasInfo) {
-    vagasInfo.innerHTML = '';
-    
-    const vagasLivres = vagas.filter(v => !v.ocupada).length;
-    const vagasOcupadas = vagas.filter(v => v.ocupada).length;
-    
-    // Cards resumo
-    const cardLivres = document.createElement('div');
-    cardLivres.className = 'vaga-info livre';
-    cardLivres.innerHTML = `
-      <div class="vaga-info-numero">${vagasLivres}</div>
-      <div class="vaga-info-status">Vagas Livres</div>
-    `;
-    vagasInfo.appendChild(cardLivres);
-    
-    const cardOcupadas = document.createElement('div');
-    cardOcupadas.className = 'vaga-info ocupada';
-    cardOcupadas.innerHTML = `
-      <div class="vaga-info-numero">${vagasOcupadas}</div>
-      <div class="vaga-info-status">Vagas Ocupadas</div>
-    `;
-    vagasInfo.appendChild(cardOcupadas);
-    
-    // Lista de vagas ocupadas
-    vagas.filter(v => v.ocupada).forEach(vaga => {
-      const div = document.createElement('div');
-      div.className = 'vaga-info ocupada';
-      div.innerHTML = `
-        <div class="vaga-info-numero">${vaga.numero}</div>
-        <div class="vaga-info-status">Ocupada</div>
-        <div class="vaga-info-placa">${vaga.veiculo.placa}</div>
-      `;
-      vagasInfo.appendChild(div);
-    });
-  }
+  renderVagas();
 }
 
 // ==================== ENTRADA ====================
@@ -483,7 +467,9 @@ function renderHistorico() {
     filtrados = filtrados.filter(h => 
       h.placa.toLowerCase().includes(busca) ||
       h.modelo.toLowerCase().includes(busca) ||
-      (h.marca && h.marca.toLowerCase().includes(busca))
+      (h.marca && h.marca.toLowerCase().includes(busca)) ||
+      (h.proprietario && h.proprietario.toLowerCase().includes(busca)) ||
+      (h.telefone && h.telefone.includes(busca))
     );
   }
   
@@ -502,6 +488,8 @@ function renderHistorico() {
     tr.innerHTML = `
       <td><strong>${h.placa}</strong></td>
       <td>${marcaModelo}</td>
+      <td>${h.proprietario || '-'}</td>
+      <td>${h.telefone || '-'}</td>
       <td>${getTipoIcone(h.tipo)}</td>
       <td>${formatarData(h.entrada)}</td>
       <td>${formatarData(h.saida)}</td>

@@ -70,16 +70,14 @@
         <input type="tel" id="veiculoTelefone" placeholder="Telefone (opcional)">
       </div>
       <div class="form-row">
-        <select id="veiculoVaga">
-          <option value="">Selecione uma vaga...</option>
-        </select>
+        <input type="hidden" id="veiculoVaga">
       </div>
       <button class="btn-primary" onclick="registrarEntrada()">✅ Confirmar Entrada</button>
     </div>
 
     <div class="form-group">
-      <h3 style="margin-bottom: 15px;">Vagas Disponíveis</h3>
-      <div class="vagas-info" id="vagasInfo"></div>
+      <h3 style="margin-bottom: 15px;">Selecione uma Vaga</h3>
+      <div class="vagas-container" id="vagasContainer"></div>
     </div>
   </div>
 
@@ -192,7 +190,7 @@
       <div class="form-row">
         <input type="date" id="dataInicio" onchange="renderHistorico()">
         <input type="date" id="dataFim" onchange="renderHistorico()">
-        <input type="text" id="buscaHistorico" placeholder="Buscar por placa..." onkeyup="renderHistorico()">
+        <input type="text" id="buscaHistorico" placeholder="Buscar por placa, nome ou telefone..." onkeyup="renderHistorico()">
       </div>
     </div>
 
@@ -216,6 +214,8 @@
         <tr>
           <th>Placa</th>
           <th>Marca/Modelo</th>
+          <th>Proprietário</th>
+          <th>Telefone</th>
           <th>Tipo</th>
           <th>Entrada</th>
           <th>Saída</th>
