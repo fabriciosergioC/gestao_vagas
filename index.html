@@ -8,18 +8,75 @@
 </head>
 <body>
 
+<!-- Tela de Login -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-container">
+    <div class="login-box">
+      <div class="login-header">
+        <h1>🅿️ Controle de Estacionamento</h1>
+        <p>Digite a senha para acessar o sistema</p>
+      </div>
+
+      <form id="loginForm" onsubmit="fazerLogin(event)">
+        <div class="form-group-login">
+          <label for="loginSenha">🔒 Senha</label>
+          <input type="password" id="loginSenha" placeholder="Digite sua senha" required autofocus>
+        </div>
+
+        <button type="submit" class="btn-login">🔓 Entrar</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Troca de Senha -->
+<div id="modalTrocaSenha" class="modal-overlay" style="display: none;">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h2>🔐 Trocar Senha</h2>
+    </div>
+
+    <div class="alert-info">
+      ⚠️ É necessário trocar a senha padrão para continuar usando o sistema.
+    </div>
+
+    <form id="trocaSenhaForm" onsubmit="trocarSenha(event)">
+      <div class="form-group-login">
+        <label for="novaSenha">🔒 Nova Senha</label>
+        <input type="password" id="novaSenha" placeholder="Digite a nova senha" required minlength="4" autofocus>
+      </div>
+
+      <div class="form-group-login">
+        <label for="confirmarNovaSenha">🔒 Confirmar Nova Senha</label>
+        <input type="password" id="confirmarNovaSenha" placeholder="Confirme a nova senha" required>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-trocar-senha">✅ Trocar Senha</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Menu Lateral -->
-<div class="sidebar">
+<div class="sidebar" id="sidebar" style="display: none;">
   <h2>🅿️ Controle de Estacionamento</h2>
   <button class="menu-btn active" onclick="showSection('entrada')">🚗 Entrada de Veículos</button>
   <button class="menu-btn" onclick="showSection('patio')">🅿️ Pátio</button>
   <button class="menu-btn" onclick="showSection('saida')">💰 Saída / Pagamento</button>
   <button class="menu-btn" onclick="showSection('historico')">📊 Histórico</button>
   <button class="menu-btn" onclick="showSection('configuracoes')">⚙️ Configurações</button>
+  
+  <div class="logout-section">
+    <button class="menu-btn btn-logout" onclick="fazerLogout()">🚪 Sair</button>
+    <div class="user-info">
+      <span>👤 </span><span id="usuarioLogado"></span>
+    </div>
+  </div>
 </div>
 
 <!-- Conteúdo Principal -->
-<div class="main-content">
+<div class="main-content" id="mainContent" style="display: none;">
 
   <!-- Seção: Entrada -->
   <div id="entrada" class="section active">
@@ -264,6 +321,11 @@
         <input type="text" id="nomeEstacionamento" placeholder="Nome do estabelecimento" style="flex: 2;">
       </div>
       <button class="btn-primary" onclick="salvarNomeEstacionamento()">💾 Salvar</button>
+    </div>
+
+    <div class="form-group">
+      <h3 style="margin-bottom: 15px;">🔐 Segurança</h3>
+      <button class="btn-info" onclick="abrirTrocaSenha()">🔑 Trocar Senha</button>
     </div>
 
     <div class="form-group">

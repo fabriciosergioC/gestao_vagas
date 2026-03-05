@@ -9,6 +9,162 @@ let configuracoes = JSON.parse(localStorage.getItem("configuracoes")) || {
   nomeEstacionamento: "Estacionamento Central"
 };
 
+// ==================== SISTEMA DE LOGIN ====================
+let usuarioAtual = localStorage.getItem("usuarioAtual") || null;
+const SENHA_PADRAO = "admin";
+
+function getUsuarios() {
+  return JSON.parse(localStorage.getItem("usuarios")) || [];
+}
+
+function saveUsuarios(usuarios) {
+  localStorage.setItem("usuarios", JSON.stringify(usuarios));
+}
+
+function verificarLogin() {
+  if (usuarioAtual) {
+    mostrarSistema();
+  } else {
+    mostrarLogin();
+  }
+}
+
+function mostrarLogin() {
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('sidebar').style.display = 'none';
+  document.getElementById('mainContent').style.display = 'none';
+  document.getElementById('loginSenha').value = '';
+  document.getElementById('loginSenha').focus();
+}
+
+function mostrarSistema() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('sidebar').style.display = 'block';
+  document.getElementById('mainContent').style.display = 'block';
+  document.getElementById('usuarioLogado').innerText = "Administrador";
+  renderAll();
+}
+
+function fazerLogin(event) {
+  event.preventDefault();
+  
+  const senha = document.getElementById('loginSenha').value;
+  
+  if (!senha) {
+    alert('Digite a senha!');
+    return;
+  }
+  
+  // Verifica senha padrão para primeiro acesso
+  if (senha === SENHA_PADRAO) {
+    const usuarios = getUsuarios();
+    const usuarioExistente = usuarios.find(u => u.usuario === 'admin');
+    
+    // Se usuário já existe e já trocou a senha
+    if (usuarioExistente && usuarioExistente.senha !== SENHA_PADRAO) {
+      alert('Senha incorreta!');
+      document.getElementById('loginSenha').value = '';
+      document.getElementById('loginSenha').focus();
+      return;
+    }
+    
+    // Primeiro acesso com senha padrão
+    usuarioAtual = 'admin';
+    localStorage.setItem("usuarioAtual", usuarioAtual);
+    
+    if (!usuarioExistente) {
+      usuarios.push({ usuario: 'admin', senha: SENHA_PADRAO });
+      saveUsuarios(usuarios);
+    }
+    
+    // Forçar troca de senha
+    mostrarTrocaSenha();
+    return;
+  }
+  
+  const usuarios = getUsuarios();
+  const usuarioEncontrado = usuarios.find(u => u.usuario === 'admin' && u.senha === senha);
+  
+  if (usuarioEncontrado) {
+    usuarioAtual = 'admin';
+    localStorage.setItem("usuarioAtual", usuarioAtual);
+    mostrarSistema();
+  } else {
+    alert('Senha incorreta!');
+    document.getElementById('loginSenha').value = '';
+    document.getElementById('loginSenha').focus();
+  }
+}
+
+function fazerLogout() {
+  if (confirm('Deseja realmente sair do sistema?')) {
+    usuarioAtual = null;
+    localStorage.removeItem("usuarioAtual");
+    mostrarLogin();
+  }
+}
+
+function mostrarTrocaSenha() {
+  document.getElementById('modalTrocaSenha').style.display = 'flex';
+  document.getElementById('novaSenha').value = '';
+  document.getElementById('confirmarNovaSenha').value = '';
+  document.getElementById('novaSenha').focus();
+}
+
+function fecharTrocaSenha() {
+  // Não permite fechar sem trocar a senha
+  alert('É necessário trocar a senha para continuar!');
+}
+
+function abrirTrocaSenha() {
+  document.getElementById('modalTrocaSenha').style.display = 'flex';
+  document.getElementById('novaSenha').value = '';
+  document.getElementById('confirmarNovaSenha').value = '';
+  document.getElementById('novaSenha').focus();
+}
+
+function trocarSenha(event) {
+  event.preventDefault();
+  
+  const novaSenha = document.getElementById('novaSenha').value;
+  const confirmarSenha = document.getElementById('confirmarNovaSenha').value;
+  
+  if (!novaSenha || !confirmarSenha) {
+    alert('Preencha todos os campos!');
+    return;
+  }
+  
+  if (novaSenha.length < 4) {
+    alert('A senha deve ter pelo menos 4 caracteres!');
+    return;
+  }
+  
+  if (novaSenha === SENHA_PADRAO) {
+    alert('A nova senha não pode ser igual à senha padrão!');
+    return;
+  }
+  
+  if (novaSenha !== confirmarSenha) {
+    alert('As senhas não coincidem!');
+    return;
+  }
+  
+  // Atualizar senha do usuário atual
+  const usuarios = getUsuarios();
+  const index = usuarios.findIndex(u => u.usuario === usuarioAtual);
+  
+  if (index !== -1) {
+    usuarios[index].senha = novaSenha;
+    saveUsuarios(usuarios);
+    
+    alert('Senha trocada com sucesso!');
+    document.getElementById('modalTrocaSenha').style.display = 'none';
+    mostrarSistema();
+  } else {
+    alert('Erro ao trocar senha. Tente novamente.');
+  }
+}
+
 function saveStorage() {
   localStorage.setItem("veiculosNoPatio", JSON.stringify(veiculosNoPatio));
   localStorage.setItem("historico", JSON.stringify(historico));
@@ -612,13 +768,13 @@ function renderAll() {
   renderPatio();
   renderHistorico();
   carregarConfiguracoes();
-  
+
   // Atualizar nome do estacionamento
   document.querySelector('.sidebar h2').innerText = '🅿️ ' + configuracoes.nomeEstacionamento;
 }
 
 // Inicialização
-renderAll();
+verificarLogin();
 
 // Atualizar tempo no pátio a cada minuto
 setInterval(() => {
