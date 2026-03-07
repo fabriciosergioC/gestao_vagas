@@ -13,16 +13,95 @@
 </head>
 <body>
 
+<!-- Tela de Seleção de Cliente -->
+<div id="clienteScreen" class="login-screen" style="display: none;">
+  <div class="login-container">
+    <div class="login-box">
+      <div class="login-header">
+        <h1>🏢 Selecione o Cliente</h1>
+        <p>Escolha o estacionamento para acessar</p>
+      </div>
+
+      <div id="listaClientes" style="margin-bottom: 20px;">
+        <p style="color: #fff; text-align: center;">Carregando clientes...</p>
+      </div>
+
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button class="btn-login" onclick="mostrarLogin()" style="flex: 1;">🔓 Login Direto</button>
+        <button class="btn-login" onclick="mostrarCadastroCliente()" style="flex: 1;">➕ Novo Cliente</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Cadastro de Cliente -->
+<div id="modalCadastroCliente" class="modal-overlay" style="display: none;">
+  <div class="modal-container" style="max-width: 500px;">
+    <div class="modal-header">
+      <h2>➕ Cadastrar Novo Cliente</h2>
+    </div>
+
+    <form id="cadastroClienteForm" onsubmit="cadastrarCliente(event)">
+      <div class="form-group-login">
+        <label for="cadastroRazaoSocial">Razão Social</label>
+        <input type="text" id="cadastroRazaoSocial" placeholder="Ex: Estacionamento Central Ltda" required>
+      </div>
+
+      <div class="form-group-login">
+        <label for="cadastroNomeFantasia">Nome Fantasia</label>
+        <input type="text" id="cadastroNomeFantasia" placeholder="Ex: Estacionamento Central">
+      </div>
+
+      <div class="form-group-login">
+        <label for="cadastroCNPJ">CNPJ</label>
+        <input type="text" id="cadastroCNPJ" placeholder="00.000.000/0000-00">
+      </div>
+
+      <div class="form-group-login">
+        <label for="cadastroEmail">E-mail</label>
+        <input type="email" id="cadastroEmail" placeholder="contato@estacionamento.com">
+      </div>
+
+      <div class="form-group-login">
+        <label for="cadastroTelefone">Telefone</label>
+        <input type="tel" id="cadastroTelefone" placeholder="(00) 00000-0000">
+      </div>
+
+      <hr style="border-color: #3498db; margin: 20px 0;">
+
+      <div class="form-group-login">
+        <label for="cadastroUsuario">Usuário Admin</label>
+        <input type="text" id="cadastroUsuario" placeholder="admin" required>
+      </div>
+
+      <div class="form-group-login">
+        <label for="cadastroSenha">Senha Admin</label>
+        <input type="password" id="cadastroSenha" placeholder="******" required minlength="4">
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-warning" onclick="fecharCadastroCliente()" style="flex: 1;">❌ Cancelar</button>
+        <button type="submit" class="btn-primary" style="flex: 1;">✅ Cadastrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Tela de Login -->
 <div id="loginScreen" class="login-screen">
   <div class="login-container">
     <div class="login-box">
       <div class="login-header">
         <h1>🅿️ Controle de Estacionamento</h1>
-        <p>Digite a senha para acessar o sistema</p>
+        <p id="nomeClienteLogin"></p>
       </div>
 
       <form id="loginForm" onsubmit="fazerLogin(event)">
+        <div class="form-group-login">
+          <label for="loginUsuario">👤 Usuário</label>
+          <input type="text" id="loginUsuario" placeholder="Digite seu usuário" value="admin">
+        </div>
+
         <div class="form-group-login">
           <label for="loginSenha">🔒 Senha</label>
           <input type="password" id="loginSenha" placeholder="Digite sua senha" required autofocus>
@@ -30,6 +109,10 @@
 
         <button type="submit" class="btn-login">🔓 Entrar</button>
       </form>
+
+      <div style="margin-top: 15px; text-align: center;">
+        <button class="btn-login" onclick="mostrarSelecaoCliente()" style="background: #7f8c8d; font-size: 12px;">🔄 Trocar Cliente</button>
+      </div>
     </div>
   </div>
 </div>

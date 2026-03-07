@@ -9,6 +9,9 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 let supabaseClient = null;
 let isSupabaseConnected = false;
 
+// Cliente atual selecionado
+let clienteAtual = null;
+
 // ==================== INICIALIZAÇÃO ====================
 
 /**
@@ -54,7 +57,7 @@ function isSupabaseAvailable() {
 // ==================== VEÍCULOS NO PÁTIO ====================
 
 /**
- * Busca todos os veículos no pátio do Supabase
+ * Busca todos os veículos no pátio do Supabase (filtrado por cliente)
  */
 async function fetchVeiculosNoPatio() {
   if (!isSupabaseAvailable()) {
@@ -62,11 +65,17 @@ async function fetchVeiculosNoPatio() {
   }
 
   try {
-    const { data, error } = await supabaseClient
+    let query = supabaseClient
       .from('veiculos')
       .select('*')
-      .is('saida', null) // Apenas veículos sem saída (no pátio)
-      .order('entrada', { ascending: false });
+      .is('saida', null); // Apenas veículos sem saída (no pátio)
+    
+    // Filtrar por cliente atual
+    if (clienteAtual?.id) {
+      query = query.eq('cliente_id', clienteAtual.id);
+    }
+    
+    const { data, error } = await query.order('entrada', { ascending: false });
 
     if (error) throw error;
     return data || [];
@@ -89,6 +98,7 @@ async function insertVeiculo(veiculo) {
       .from('veiculos')
       .insert([{
         id: veiculo.id,
+        cliente_id: clienteAtual?.id || null,
         placa: veiculo.placa,
         marca: veiculo.marca,
         modelo: veiculo.modelo,
@@ -161,7 +171,7 @@ async function deleteVeiculo(id) {
 // ==================== HISTÓRICO ====================
 
 /**
- * Busca todo o histórico do Supabase
+ * Busca todo o histórico do Supabase (filtrado por cliente)
  */
 async function fetchHistorico() {
   if (!isSupabaseAvailable()) {
@@ -169,10 +179,16 @@ async function fetchHistorico() {
   }
 
   try {
-    const { data, error } = await supabaseClient
+    let query = supabaseClient
       .from('historico')
-      .select('*')
-      .order('saida', { ascending: false });
+      .select('*');
+    
+    // Filtrar por cliente atual
+    if (clienteAtual?.id) {
+      query = query.eq('cliente_id', clienteAtual.id);
+    }
+    
+    const { data, error } = await query.order('saida', { ascending: false });
 
     if (error) throw error;
     return data || [];
@@ -195,6 +211,7 @@ async function insertHistorico(registro) {
       .from('historico')
       .insert([{
         id: registro.id,
+        cliente_id: clienteAtual?.id || null,
         veiculo_id: registro.id,
         placa: registro.placa,
         marca: registro.marca,
@@ -246,7 +263,7 @@ async function clearHistorico() {
 // ==================== CONFIGURAÇÕES ====================
 
 /**
- * Busca configurações do Supabase
+ * Busca configurações do Supabase (filtrado por cliente)
  */
 async function fetchConfiguracoes() {
   if (!isSupabaseAvailable()) {
@@ -254,11 +271,16 @@ async function fetchConfiguracoes() {
   }
 
   try {
-    const { data, error } = await supabaseClient
+    let query = supabaseClient
       .from('configuracoes')
-      .select('*')
-      .eq('id', 1)
-      .single();
+      .select('*');
+    
+    // Filtrar por cliente atual
+    if (clienteAtual?.id) {
+      query = query.eq('cliente_id', clienteAtual.id);
+    }
+    
+    const { data, error } = await query.single();
 
     if (error && error.code !== 'PGRST116') throw error; // PGRST116 = not found
     return data;
@@ -277,12 +299,16 @@ async function saveConfiguracoes(config) {
   }
 
   try {
-    // Verifica se já existe
-    const { data: existing } = await supabaseClient
+    // Verifica se já existe para o cliente atual
+    let query = supabaseClient
       .from('configuracoes')
-      .select('id')
-      .eq('id', 1)
-      .single();
+      .select('id');
+    
+    if (clienteAtual?.id) {
+      query = query.eq('cliente_id', clienteAtual.id);
+    }
+    
+    const { data: existing } = await query.single();
 
     let data, error;
 
@@ -298,7 +324,7 @@ async function saveConfiguracoes(config) {
           nome_estacionamento: config.nomeEstacionamento,
           updated_at: new Date().toISOString()
         })
-        .eq('id', 1)
+        .eq('id', existing.id)
         .select()
         .single());
     } else {
@@ -306,7 +332,7 @@ async function saveConfiguracoes(config) {
       ({ data, error } = await supabaseClient
         .from('configuracoes')
         .insert([{
-          id: 1,
+          cliente_id: clienteAtual?.id || 1,
           valor_hora_carro: config.valorHoraCarro,
           valor_hora_moto: config.valorHoraMoto,
           valor_hora_caminhao: config.valorHoraCaminhao,
@@ -328,18 +354,130 @@ async function saveConfiguracoes(config) {
 // ==================== USUÁRIOS ====================
 
 /**
- * Busca usuários do Supabase
+ * Busca todos os clientes do Supabase
  */
-async function fetchUsuarios() {
+async function fetchClientes() {
   if (!isSupabaseAvailable()) {
     return null;
   }
 
   try {
     const { data, error } = await supabaseClient
-      .from('usuarios')
+      .from('clientes')
       .select('*')
-      .order('usuario');
+      .eq('ativo', true)
+      .order('nome_fantasia');
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('Erro ao buscar clientes:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Cria um novo cliente
+ */
+async function createCliente(cliente) {
+  if (!isSupabaseAvailable()) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('clientes')
+      .insert([{
+        cnpj: cliente.cnpj || null,
+        razao_social: cliente.razao_social,
+        nome_fantasia: cliente.nome_fantasia,
+        email: cliente.email || null,
+        telefone: cliente.telefone || null,
+        endereco: cliente.endereco || null
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    // Criar configurações padrão para o cliente
+    if (data) {
+      await supabaseClient
+        .from('configuracoes')
+        .insert([{
+          cliente_id: data.id,
+          valor_hora_carro: 10.00,
+          valor_hora_moto: 5.00,
+          valor_hora_caminhao: 20.00,
+          total_vagas: 20,
+          nome_estacionamento: cliente.nome_fantasia || cliente.razao_social
+        }]);
+      
+      // Criar usuário admin
+      if (cliente.usuario_admin && cliente.senha_admin) {
+        await supabaseClient
+          .from('usuarios')
+          .insert([{
+            cliente_id: data.id,
+            usuario: cliente.usuario_admin,
+            senha: cliente.senha_admin,
+            nome: 'Administrador',
+            email: cliente.email,
+            ativo: true
+          }]);
+      }
+    }
+    
+    return data;
+  } catch (err) {
+    console.error('Erro ao criar cliente:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Atualiza um cliente
+ */
+async function updateCliente(id, updates) {
+  if (!isSupabaseAvailable()) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('clientes')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.error('Erro ao atualizar cliente:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Busca usuários do Supabase (filtrado por cliente)
+ */
+async function fetchUsuarios(clienteId = null) {
+  if (!isSupabaseAvailable()) {
+    return null;
+  }
+
+  try {
+    let query = supabaseClient.from('usuarios').select('*');
+    
+    if (clienteId || clienteAtual?.id) {
+      query = query.eq('cliente_id', clienteId || clienteAtual.id);
+    }
+    
+    const { data, error } = await query.order('usuario');
 
     if (error) throw error;
     return data || [];
@@ -358,16 +496,20 @@ async function saveUsuarios(usuarios) {
   }
 
   try {
-    // Upsert para cada usuário
+    // Upsert para cada usuário com cliente_id
     for (const usuario of usuarios) {
       const { error } = await supabaseClient
         .from('usuarios')
         .upsert({
           usuario: usuario.usuario,
           senha: usuario.senha,
+          cliente_id: clienteAtual?.id || usuario.cliente_id,
+          nome: usuario.nome,
+          email: usuario.email,
+          ativo: usuario.ativo !== false,
           updated_at: new Date().toISOString()
         }, {
-          onConflict: 'usuario'
+          onConflict: 'usuario,cliente_id'
         });
 
       if (error) throw error;
@@ -455,6 +597,7 @@ async function syncToSupabase() {
         .from('veiculos')
         .upsert({
           id: veiculo.id,
+          cliente_id: clienteAtual?.id || veiculo.cliente_id,
           placa: veiculo.placa,
           marca: veiculo.marca,
           modelo: veiculo.modelo,
@@ -466,7 +609,7 @@ async function syncToSupabase() {
           entrada: veiculo.entrada,
           saida: null
         }, {
-          onConflict: 'id'
+          onConflict: 'id,cliente_id'
         });
     }
 
@@ -476,6 +619,7 @@ async function syncToSupabase() {
         .from('historico')
         .upsert({
           id: registro.id,
+          cliente_id: clienteAtual?.id || registro.cliente_id,
           veiculo_id: registro.id,
           placa: registro.placa,
           marca: registro.marca,
@@ -491,13 +635,14 @@ async function syncToSupabase() {
           valor_cobrado: registro.valorCobrado,
           forma_pagamento: registro.formaPagamento
         }, {
-          onConflict: 'id'
+          onConflict: 'id,cliente_id'
         });
     }
 
     console.log('✅ Dados sincronizados para o Supabase');
     console.log(`   - ${veiculosNoPatio.length} veículo(s) no pátio`);
     console.log(`   - ${historico.length} registro(s) no histórico`);
+    console.log(`   - Cliente: ${clienteAtual?.nome_fantasia || 'N/A'}`);
     return true;
   } catch (err) {
     console.error('Erro na sincronização:', err.message);
@@ -522,5 +667,12 @@ window.supabaseFunctions = {
   fetchConfiguracoes,
   saveConfiguracoes,
   fetchUsuarios,
-  saveUsuarios
+  saveUsuarios,
+  // Funções de clientes (multi-tenant)
+  fetchClientes,
+  createCliente,
+  updateCliente,
+  // Getter/Setter para cliente atual
+  getClienteAtual: () => clienteAtual,
+  setClienteAtual: (cliente) => { clienteAtual = cliente; }
 };

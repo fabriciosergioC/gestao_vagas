@@ -19,6 +19,14 @@ async function inicializarSistema() {
   const supabaseConectado = await window.supabaseFunctions?.initSupabase();
   
   if (supabaseConectado) {
+    // Verificar se já existe cliente selecionado
+    const clienteSalvo = localStorage.getItem('clienteAtual');
+    if (clienteSalvo) {
+      const cliente = JSON.parse(clienteSalvo);
+      window.supabaseFunctions?.setClienteAtual(cliente);
+      console.log(`🏢 Cliente selecionado: ${cliente.nome_fantasia}`);
+    }
+    
     // Sincronizar dados do Supabase
     const sincronizado = await window.supabaseFunctions.syncFromSupabase();
     if (sincronizado) {
@@ -65,17 +73,134 @@ function saveUsuarios(usuarios) {
   localStorage.setItem("usuarios", JSON.stringify(usuarios));
 }
 
-function verificarLogin() {
-  // Sempre exige login ao abrir a página
+/**
+ * Verifica o estado do login e exibe a tela apropriada
+ */
+async function verificarLogin() {
+  // Se já estiver logado, mostra o sistema
+  if (usuarioAtual) {
+    mostrarSistema();
+    return;
+  }
+  
+  // Se tiver Supabase conectado, mostra seleção de clientes
+  if (window.supabaseFunctions?.isSupabaseAvailable()) {
+    mostrarSelecaoCliente();
+  } else {
+    // Sem Supabase, login direto
+    mostrarLogin();
+  }
+}
+
+/**
+ * Mostra a tela de seleção de clientes
+ */
+async function mostrarSelecaoCliente() {
+  document.getElementById('clienteScreen').style.display = 'flex';
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('sidebar').style.display = 'none';
+  document.getElementById('mainContent').style.display = 'none';
+  
+  // Carregar lista de clientes
+  carregarListaClientes();
+}
+
+/**
+ * Carrega a lista de clientes do Supabase
+ */
+async function carregarListaClientes() {
+  const listaDiv = document.getElementById('listaClientes');
+  
+  try {
+    const clientes = await window.supabaseFunctions?.fetchClientes();
+    
+    if (clientes && clientes.length > 0) {
+      listaDiv.innerHTML = clientes.map(cliente => `
+        <div class="cliente-item" onclick="selecionarCliente(${cliente.id}, '${cliente.nome_fantasia}')" 
+             style="background: #3498db; padding: 15px; margin-bottom: 10px; border-radius: 8px; cursor: pointer; color: #fff; transition: transform 0.2s;"
+             onmouseover="this.style.transform='scale(1.02)'" 
+             onmouseout="this.style.transform='scale(1)'">
+          <h3 style="margin: 0 0 5px 0;">🏢 ${cliente.nome_fantasia || cliente.razao_social}</h3>
+          <p style="margin: 0; font-size: 12px; opacity: 0.9;">${cliente.cnpj || ''} | ${cliente.email || ''}</p>
+        </div>
+      `).join('');
+    } else {
+      listaDiv.innerHTML = '<p style="color: #fff; text-align: center;">Nenhum cliente cadastrado</p>';
+    }
+  } catch (err) {
+    listaDiv.innerHTML = '<p style="color: #fff; text-align: center;">Erro ao carregar clientes</p>';
+    console.error('Erro ao carregar clientes:', err);
+  }
+}
+
+/**
+ * Seleciona um cliente e vai para o login
+ */
+function selecionarCliente(clienteId, clienteNome) {
+  const cliente = { id: clienteId, nome_fantasia: clienteNome };
+  window.supabaseFunctions?.setClienteAtual(cliente);
+  localStorage.setItem('clienteAtual', JSON.stringify(cliente));
+  
+  document.getElementById('nomeClienteLogin').innerText = `🏢 ${clienteNome}`;
+  document.getElementById('clienteScreen').style.display = 'none';
   mostrarLogin();
+}
+
+/**
+ * Mostra a tela de cadastro de cliente
+ */
+function mostrarCadastroCliente() {
+  document.getElementById('modalCadastroCliente').style.display = 'flex';
+}
+
+/**
+ * Fecha a tela de cadastro de cliente
+ */
+function fecharCadastroCliente() {
+  document.getElementById('modalCadastroCliente').style.display = 'none';
+}
+
+/**
+ * Cadastra um novo cliente
+ */
+async function cadastrarCliente(event) {
+  event.preventDefault();
+  
+  const cliente = {
+    razao_social: document.getElementById('cadastroRazaoSocial').value,
+    nome_fantasia: document.getElementById('cadastroNomeFantasia').value || document.getElementById('cadastroRazaoSocial').value,
+    cnpj: document.getElementById('cadastroCNPJ').value,
+    email: document.getElementById('cadastroEmail').value,
+    telefone: document.getElementById('cadastroTelefone').value,
+    usuario_admin: document.getElementById('cadastroUsuario').value,
+    senha_admin: document.getElementById('cadastroSenha').value
+  };
+  
+  const resultado = await window.supabaseFunctions?.createCliente(cliente);
+  
+  if (resultado) {
+    alert('✅ Cliente cadastrado com sucesso!');
+    fecharCadastroCliente();
+    document.getElementById('cadastroClienteForm').reset();
+    carregarListaClientes();
+  } else {
+    alert('❌ Erro ao cadastrar cliente. Verifique o console.');
+  }
 }
 
 function mostrarLogin() {
   document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('clienteScreen').style.display = 'none';
   document.getElementById('sidebar').style.display = 'none';
   document.getElementById('mainContent').style.display = 'none';
   document.getElementById('loginSenha').value = '';
   document.getElementById('loginSenha').focus();
+  
+  // Atualizar nome do cliente se existir
+  const clienteAtual = window.supabaseFunctions?.getClienteAtual();
+  if (clienteAtual) {
+    document.getElementById('nomeClienteLogin').innerText = `🏢 ${clienteAtual.nome_fantasia}`;
+  }
 }
 
 function mostrarSistema() {
@@ -86,9 +211,13 @@ function mostrarSistema() {
   renderAll();
 }
 
-function fazerLogin(event) {
+/**
+ * Faz login do usuário
+ */
+async function fazerLogin(event) {
   event.preventDefault();
 
+  const usuario = document.getElementById('loginUsuario')?.value || 'admin';
   const senha = document.getElementById('loginSenha').value;
 
   if (!senha) {
@@ -96,15 +225,32 @@ function fazerLogin(event) {
     return;
   }
 
-  // Verifica senha padrão
-  if (senha === SENHA_PADRAO) {
+  // Se tiver Supabase, valida usuário no banco
+  if (window.supabaseFunctions?.isSupabaseAvailable()) {
+    try {
+      const usuarios = await window.supabaseFunctions.fetchUsuarios();
+      const usuarioValido = usuarios?.find(u => u.usuario === usuario && u.senha === senha && u.ativo !== false);
+      
+      if (usuarioValido) {
+        usuarioAtual = usuario;
+        localStorage.setItem("usuarioAtual", usuarioAtual);
+        mostrarSistema();
+        return;
+      }
+    } catch (err) {
+      console.error('Erro ao validar usuário:', err);
+    }
+  }
+
+  // Fallback: senha padrão admin
+  if (usuario === 'admin' && senha === SENHA_PADRAO) {
     usuarioAtual = 'admin';
     localStorage.setItem("usuarioAtual", usuarioAtual);
     mostrarSistema();
     return;
   }
 
-  alert('Senha incorreta!');
+  alert('Usuário ou senha incorretos!');
   document.getElementById('loginSenha').value = '';
   document.getElementById('loginSenha').focus();
 }
@@ -113,6 +259,7 @@ function fazerLogout() {
   if (confirm('Deseja realmente sair do sistema?')) {
     usuarioAtual = null;
     localStorage.removeItem("usuarioAtual");
+    // Manter cliente selecionado para próximo login
     mostrarLogin();
   }
 }
