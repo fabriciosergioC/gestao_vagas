@@ -30,8 +30,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   email VARCHAR(200),
   ativo BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  CONSTRAINT usuarios_usuario_cliente_unique UNIQUE (usuario, cliente_id)
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_usuarios_cliente ON usuarios(cliente_id);
@@ -87,8 +86,8 @@ CREATE INDEX IF NOT EXISTS idx_historico_cliente_saida ON historico(cliente_id, 
 
 -- ==================== TABELA: CONFIGURAÇÕES ====================
 CREATE TABLE IF NOT EXISTS configuracoes (
-  id INTEGER NOT NULL DEFAULT 1,
-  cliente_id BIGINT REFERENCES clientes(id) ON DELETE CASCADE,
+  id INTEGER NOT NULL,
+  cliente_id BIGINT NOT NULL,
   valor_hora_carro DECIMAL(10,2) NOT NULL DEFAULT 10.00,
   valor_hora_moto DECIMAL(10,2) NOT NULL DEFAULT 5.00,
   valor_hora_caminhao DECIMAL(10,2) NOT NULL DEFAULT 20.00,
@@ -98,7 +97,8 @@ CREATE TABLE IF NOT EXISTS configuracoes (
   tolerancia_minutos INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  CONSTRAINT configuracoes_cliente_unique UNIQUE (id, cliente_id)
+  PRIMARY KEY (id, cliente_id),
+  FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_configuracoes_cliente ON configuracoes(cliente_id);
@@ -222,8 +222,8 @@ BEGIN
   RETURNING id INTO v_cliente_id;
   
   -- Inserir configurações padrão
-  INSERT INTO configuracoes (cliente_id, valor_hora_carro, valor_hora_moto, valor_hora_caminhao, total_vagas, nome_estacionamento)
-  VALUES (v_cliente_id, 10.00, 5.00, 20.00, 20, COALESCE(p_nome_fantasia, p_razao_social));
+  INSERT INTO configuracoes (id, cliente_id, valor_hora_carro, valor_hora_moto, valor_hora_caminhao, total_vagas, nome_estacionamento)
+  VALUES (1, v_cliente_id, 10.00, 5.00, 20.00, 20, COALESCE(p_nome_fantasia, p_razao_social));
   
   -- Inserir usuário admin
   INSERT INTO usuarios (cliente_id, usuario, senha, nome, email, ativo)
@@ -297,18 +297,15 @@ GROUP BY c.id, c.nome_fantasia, c.razao_social, c.ativo, cfg.total_vagas;
 
 -- Inserir cliente padrão (ID = 1)
 INSERT INTO clientes (id, cnpj, razao_social, nome_fantasia, email, telefone)
-VALUES (1, '00.000.000/0001-00', 'Cliente Padrão Ltda', 'Estacionamento Central', 'contato@estacionamento.com', '(11) 99999-9999')
-ON CONFLICT (id) DO NOTHING;
+VALUES (1, '00.000.000/0001-00', 'Cliente Padrão Ltda', 'Estacionamento Central', 'contato@estacionamento.com', '(11) 99999-9999');
 
 -- Inserir configurações para o cliente padrão
 INSERT INTO configuracoes (id, cliente_id, valor_hora_carro, valor_hora_moto, valor_hora_caminhao, total_vagas, nome_estacionamento)
-VALUES (1, 1, 10.00, 5.00, 20.00, 20, 'Estacionamento Central')
-ON CONFLICT (cliente_id) DO NOTHING;
+VALUES (1, 1, 10.00, 5.00, 20.00, 20, 'Estacionamento Central');
 
 -- Inserir usuário admin para o cliente padrão
 INSERT INTO usuarios (cliente_id, usuario, senha, nome, email, ativo)
-VALUES (1, 'admin', 'admin', 'Administrador', 'contato@estacionamento.com', true)
-ON CONFLICT (usuario, cliente_id) DO NOTHING;
+VALUES (1, 'admin', 'admin', 'Administrador', 'contato@estacionamento.com', true);
 
 -- ==================== COMENTÁRIOS ====================
 COMMENT ON TABLE veiculos IS 'Veículos estacionados no pátio';
