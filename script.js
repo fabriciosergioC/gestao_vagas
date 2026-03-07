@@ -1,13 +1,57 @@
 // ==================== DADOS ====================
-let veiculosNoPatio = JSON.parse(localStorage.getItem("veiculosNoPatio")) || [];
-let historico = JSON.parse(localStorage.getItem("historico")) || [];
-let configuracoes = JSON.parse(localStorage.getItem("configuracoes")) || {
+let veiculosNoPatio = [];
+let historico = [];
+let configuracoes = {
   valorHoraCarro: 10.00,
   valorHoraMoto: 5.00,
   valorHoraCaminhao: 20.00,
   totalVagas: 20,
   nomeEstacionamento: "Estacionamento Central"
 };
+
+// ==================== INICIALIZAÇÃO DO SISTEMA ====================
+
+/**
+ * Inicializa o sistema carregando dados do Supabase ou localStorage
+ */
+async function inicializarSistema() {
+  // Tentar conectar no Supabase primeiro
+  const supabaseConectado = await window.supabaseFunctions?.initSupabase();
+  
+  if (supabaseConectado) {
+    // Sincronizar dados do Supabase
+    const sincronizado = await window.supabaseFunctions.syncFromSupabase();
+    if (sincronizado) {
+      carregarDadosLocais();
+      console.log('📊 Dados carregados do Supabase');
+    } else {
+      carregarDadosLocais();
+      console.log('⚠️ Usando dados locais (fallback)');
+    }
+  } else {
+    // Fallback para localStorage
+    carregarDadosLocais();
+    console.log('📊 Dados carregados do localStorage');
+  }
+  
+  // Iniciar sistema de login
+  verificarLogin();
+}
+
+/**
+ * Carrega dados do localStorage
+ */
+function carregarDadosLocais() {
+  veiculosNoPatio = JSON.parse(localStorage.getItem("veiculosNoPatio")) || [];
+  historico = JSON.parse(localStorage.getItem("historico")) || [];
+  configuracoes = JSON.parse(localStorage.getItem("configuracoes")) || {
+    valorHoraCarro: 10.00,
+    valorHoraMoto: 5.00,
+    valorHoraCaminhao: 20.00,
+    totalVagas: 20,
+    nomeEstacionamento: "Estacionamento Central"
+  };
+}
 
 // ==================== SISTEMA DE LOGIN ====================
 let usuarioAtual = localStorage.getItem("usuarioAtual") || null;
@@ -134,10 +178,22 @@ function trocarSenha(event) {
   }
 }
 
-function saveStorage() {
+/**
+ * Salva dados no localStorage e sincroniza com Supabase (se disponível)
+ */
+async function saveStorage() {
   localStorage.setItem("veiculosNoPatio", JSON.stringify(veiculosNoPatio));
   localStorage.setItem("historico", JSON.stringify(historico));
   localStorage.setItem("configuracoes", JSON.stringify(configuracoes));
+  
+  // Sincronizar com Supabase em background (não bloqueante)
+  if (window.supabaseFunctions?.isSupabaseAvailable()) {
+    try {
+      await window.supabaseFunctions.syncToSupabase();
+    } catch (err) {
+      console.error('Erro ao sincronizar com Supabase:', err);
+    }
+  }
 }
 
 // ==================== NAVEGAÇÃO ====================
@@ -1590,7 +1646,7 @@ function renderAll() {
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', function() {
-  verificarLogin();
+  inicializarSistema();
 });
 
 // Atualizar tempo no pátio a cada minuto
