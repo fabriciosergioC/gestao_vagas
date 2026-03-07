@@ -762,11 +762,857 @@ function importarDados(input) {
   reader.readAsText(file);
 }
 
+// ==================== RELATÓRIOS ====================
+let relatorioEntradas = [];
+let relatorioEntradasSaidas = [];
+
+function mostrarSubRelatorio(tipo) {
+  const subEntradas = document.getElementById('subRelatorioEntradas');
+  const subEntradasSaidas = document.getElementById('subRelatorioEntradasSaidas');
+  const subFaturamento = document.getElementById('subRelatorioFaturamento');
+  const subVagas = document.getElementById('subRelatorioVagas');
+  const btnEntradas = document.getElementById('btnRelatorioEntradas');
+  const btnEntradasSaidas = document.getElementById('btnRelatorioEntradasSaidas');
+  const btnFaturamento = document.getElementById('btnRelatorioFaturamento');
+  const btnVagas = document.getElementById('btnRelatorioVagas');
+
+  // Resetar todos os botões
+  btnEntradas.classList.remove('btn-primary');
+  btnEntradas.classList.add('btn-info');
+  btnEntradasSaidas.classList.remove('btn-primary');
+  btnEntradasSaidas.classList.add('btn-info');
+  btnFaturamento.classList.remove('btn-primary');
+  btnFaturamento.classList.add('btn-info');
+  btnVagas.classList.remove('btn-primary');
+  btnVagas.classList.add('btn-info');
+
+  // Esconder todas as seções
+  subEntradas.style.display = 'none';
+  subEntradasSaidas.style.display = 'none';
+  subFaturamento.style.display = 'none';
+  subVagas.style.display = 'none';
+
+  // Mostrar seção selecionada e ativar botão
+  if (tipo === 'entradas') {
+    subEntradas.style.display = 'block';
+    btnEntradas.classList.remove('btn-info');
+    btnEntradas.classList.add('btn-primary');
+  } else if (tipo === 'entradas-saidas') {
+    subEntradasSaidas.style.display = 'block';
+    btnEntradasSaidas.classList.remove('btn-info');
+    btnEntradasSaidas.classList.add('btn-primary');
+  } else if (tipo === 'faturamento') {
+    subFaturamento.style.display = 'block';
+    btnFaturamento.classList.remove('btn-info');
+    btnFaturamento.classList.add('btn-primary');
+  } else if (tipo === 'vagas') {
+    subVagas.style.display = 'block';
+    btnVagas.classList.remove('btn-info');
+    btnVagas.classList.add('btn-primary');
+    renderRelatorioVagas();
+  }
+}
+
+function gerarRelatorioEntradas() {
+  const dataInicio = document.getElementById('relDataInicio')?.value;
+  const dataFim = document.getElementById('relDataFim')?.value;
+  const tipoVeiculo = document.getElementById('relTipoVeiculo')?.value || '';
+  const busca = document.getElementById('relBusca')?.value.toLowerCase() || '';
+
+  // Combinar veículos no pátio e histórico para ter todas as entradas
+  const todasEntradas = [...veiculosNoPatio, ...historico];
+
+  // Filtrar entradas
+  relatorioEntradas = todasEntradas.filter(v => {
+    // Filtro por data
+    if (dataInicio && new Date(v.entrada) < new Date(dataInicio)) {
+      return false;
+    }
+    if (dataFim && new Date(v.entrada) > new Date(new Date(dataFim).setHours(23, 59, 59))) {
+      return false;
+    }
+    // Filtro por tipo
+    if (tipoVeiculo && v.tipo !== tipoVeiculo) {
+      return false;
+    }
+    // Filtro por busca
+    if (busca) {
+      const matchPlaca = v.placa.toLowerCase().includes(busca);
+      const matchModelo = v.modelo.toLowerCase().includes(busca);
+      const matchMarca = v.marca && v.marca.toLowerCase().includes(busca);
+      if (!matchPlaca && !matchModelo && !matchMarca) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // Ordenar por data de entrada (mais recente primeiro)
+  relatorioEntradas.sort((a, b) => new Date(b.entrada) - new Date(a.entrada));
+
+  renderRelatorio();
+}
+
+function renderRelatorio() {
+  const tbody = document.getElementById('tabelaRelatorio')?.querySelector('tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = '';
+
+  relatorioEntradas.forEach(v => {
+    const tr = document.createElement('tr');
+    const marcaModelo = v.marca ? `${v.marca} ${v.modelo}` : v.modelo;
+    
+    // Verificar se está no pátio ou já saiu
+    const noPatio = veiculosNoPatio.some(veic => veic.id === v.id);
+    const status = noPatio ? '🟢 No Pátio' : '🔴 Finalizado';
+    
+    tr.innerHTML = `
+      <td><strong>${v.placa}</strong></td>
+      <td>${marcaModelo}</td>
+      <td>${v.cor}</td>
+      <td>${getTipoIcone(v.tipo)} ${v.tipo}</td>
+      <td>${v.proprietario || '-'}</td>
+      <td>${v.telefone || '-'}</td>
+      <td>${v.vaga}</td>
+      <td>${formatarData(v.entrada)}</td>
+      <td>${status}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Atualizar stats
+  const totalEntradas = relatorioEntradas.length;
+  const totalCarros = relatorioEntradas.filter(v => v.tipo === 'carro').length;
+  const totalMotos = relatorioEntradas.filter(v => v.tipo === 'moto').length;
+  const totalCaminhoes = relatorioEntradas.filter(v => v.tipo === 'caminhao').length;
+
+  document.getElementById('relTotalEntradas').innerText = totalEntradas;
+  document.getElementById('relTotalCarros').innerText = totalCarros;
+  document.getElementById('relTotalMotos').innerText = totalMotos;
+  document.getElementById('relTotalCaminhoes').innerText = totalCaminhoes;
+}
+
+function limparFiltrosRelatorio() {
+  document.getElementById('relDataInicio').value = '';
+  document.getElementById('relDataFim').value = '';
+  document.getElementById('relTipoVeiculo').value = '';
+  document.getElementById('relBusca').value = '';
+  relatorioEntradas = [];
+  renderRelatorio();
+}
+
+function imprimirRelatorioEntradasPDF() {
+  if (relatorioEntradas.length === 0) {
+    alert('Gere um relatório primeiro antes de imprimir!');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('l', 'mm', 'a4'); // Paisagem
+
+  // Título
+  doc.setFontSize(16);
+  doc.setTextColor(40, 40, 40);
+  doc.text('Relatório de Entradas de Veículos', 14, 15);
+
+  // Informações do estacionamento
+  doc.setFontSize(10);
+  doc.text(`Estacionamento: ${configuracoes.nomeEstacionamento}`, 14, 22);
+  
+  const dataGeracao = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  doc.text(`Gerado em: ${dataGeracao}`, 14, 27);
+
+  // Filtros aplicados
+  const dataInicio = document.getElementById('relDataInicio')?.value;
+  const dataFim = document.getElementById('relDataFim')?.value;
+  const tipoVeiculo = document.getElementById('relTipoVeiculo')?.value || '';
+  
+  let filtros = 'Filtros: ';
+  if (dataInicio) filtros += `De ${new Date(dataInicio).toLocaleDateString('pt-BR')} `;
+  if (dataFim) filtros += `Até ${new Date(dataFim).toLocaleDateString('pt-BR')} `;
+  if (tipoVeiculo) filtros += `| Tipo: ${tipoVeiculo} `;
+  if (filtros === 'Filtros: ') filtros += 'Nenhum filtro aplicado';
+  
+  doc.text(filtros, 14, 32);
+
+  // Estatísticas
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  const stats = `Total: ${relatorioEntradas.length} | Carros: ${relatorioEntradas.filter(v => v.tipo === 'carro').length} | Motos: ${relatorioEntradas.filter(v => v.tipo === 'moto').length} | Caminhões: ${relatorioEntradas.filter(v => v.tipo === 'caminhao').length}`;
+  doc.text(stats, 14, 38);
+
+  // Preparar dados para a tabela
+  const dadosTabela = relatorioEntradas.map(v => {
+    const marcaModelo = v.marca ? `${v.marca} ${v.modelo}` : v.modelo;
+    const noPatio = veiculosNoPatio.some(veic => veic.id === v.id);
+    const status = noPatio ? 'No Pátio' : 'Finalizado';
+    const dataEntrada = new Date(v.entrada).toLocaleDateString('pt-BR') + ' ' + new Date(v.entrada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    
+    return [
+      v.placa,
+      marcaModelo,
+      v.cor,
+      v.tipo,
+      v.proprietario || '-',
+      v.telefone || '-',
+      v.vaga,
+      dataEntrada,
+      status
+    ];
+  });
+
+  // Gerar tabela
+  doc.autoTable({
+    startY: 42,
+    head: [['Placa', 'Marca/Modelo', 'Cor', 'Tipo', 'Proprietário', 'Telefone', 'Vaga', 'Entrada', 'Status']],
+    body: dadosTabela,
+    theme: 'striped',
+    headStyles: { fillColor: [52, 152, 219], textColor: 255, fontSize: 8 },
+    bodyStyles: { fontSize: 7 },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 35 },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 18 },
+      4: { cellWidth: 30 },
+      5: { cellWidth: 25 },
+      6: { cellWidth: 12 },
+      7: { cellWidth: 35 },
+      8: { cellWidth: 20 }
+    },
+    margin: { top: 42, left: 14, right: 14 },
+  });
+
+  // Salvar PDF
+  const nomeArquivo = `relatorio-entradas-${new Date().toISOString().split('T')[0]}.pdf`;
+  doc.save(nomeArquivo);
+}
+
+// ==================== RELATÓRIO DE ENTRADAS E SAÍDAS ====================
+function gerarRelatorioEntradasSaidas() {
+  const dataInicio = document.getElementById('relESDataInicio')?.value;
+  const dataFim = document.getElementById('relESDataFim')?.value;
+  const tipoVeiculo = document.getElementById('relESTipoVeiculo')?.value || '';
+  const busca = document.getElementById('relESBusca')?.value.toLowerCase() || '';
+
+  // Combinar veículos no pátio e histórico
+  const todasEntradas = [...veiculosNoPatio, ...historico];
+
+  // Filtrar
+  relatorioEntradasSaidas = todasEntradas.filter(v => {
+    // Filtro por data de entrada
+    if (dataInicio && new Date(v.entrada) < new Date(dataInicio)) {
+      return false;
+    }
+    if (dataFim && new Date(v.entrada) > new Date(new Date(dataFim).setHours(23, 59, 59))) {
+      return false;
+    }
+    // Filtro por tipo
+    if (tipoVeiculo && v.tipo !== tipoVeiculo) {
+      return false;
+    }
+    // Filtro por busca
+    if (busca) {
+      const matchPlaca = v.placa.toLowerCase().includes(busca);
+      const matchModelo = v.modelo.toLowerCase().includes(busca);
+      const matchMarca = v.marca && v.marca.toLowerCase().includes(busca);
+      if (!matchPlaca && !matchModelo && !matchMarca) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // Ordenar por data de entrada (mais recente primeiro)
+  relatorioEntradasSaidas.sort((a, b) => new Date(b.entrada) - new Date(a.entrada));
+
+  renderRelatorioEntradasSaidas();
+}
+
+function renderRelatorioEntradasSaidas() {
+  const tbody = document.getElementById('tabelaRelatorioES')?.querySelector('tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = '';
+
+  let totalMinutosPermanencia = 0;
+  let countComSaida = 0;
+
+  relatorioEntradasSaidas.forEach(v => {
+    const tr = document.createElement('tr');
+    const marcaModelo = v.marca ? `${v.marca} ${v.modelo}` : v.modelo;
+    
+    // Verificar se está no pátio ou já saiu
+    const noPatio = veiculosNoPatio.some(veic => veic.id === v.id);
+    const status = noPatio ? '🟢 No Pátio' : '🔴 Finalizado';
+    
+    // Data e hora de saída
+    let dataSaida = '-';
+    if (v.saida) {
+      dataSaida = formatarData(v.saida);
+      // Calcular tempo de permanência para veículos que já saíram
+      const entrada = new Date(v.entrada);
+      const saida = new Date(v.saida);
+      const diffMinutos = Math.floor((saida - entrada) / (1000 * 60));
+      totalMinutosPermanencia += diffMinutos;
+      countComSaida++;
+    }
+    
+    // Tempo de permanência
+    let tempoPermanencia = calcularTempoPermanencia(v.entrada);
+    if (v.saida) {
+      const entrada = new Date(v.entrada);
+      const saida = new Date(v.saida);
+      const diffHoras = Math.floor((saida - entrada) / (1000 * 60 * 60));
+      const diffMinutos = Math.floor(((saida - entrada) % (1000 * 60 * 60)) / (1000 * 60));
+      if (diffHoras > 0) {
+        tempoPermanencia = `${diffHoras}h ${diffMinutos}min`;
+      } else {
+        tempoPermanencia = `${diffMinutos}min`;
+      }
+    }
+    
+    tr.innerHTML = `
+      <td><strong>${v.placa}</strong></td>
+      <td>${marcaModelo}</td>
+      <td>${getTipoIcone(v.tipo)} ${v.tipo}</td>
+      <td>${formatarData(v.entrada)}</td>
+      <td>${dataSaida}</td>
+      <td>${tempoPermanencia}</td>
+      <td>${status}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Atualizar stats
+  const totalRegistros = relatorioEntradasSaidas.length;
+  const totalNoPatio = relatorioEntradasSaidas.filter(v => veiculosNoPatio.some(veic => veic.id === v.id)).length;
+  const totalSaidas = relatorioEntradasSaidas.filter(v => v.saida).length;
+  const tempoMedioMinutos = countComSaida > 0 ? Math.round(totalMinutosPermanencia / countComSaida) : 0;
+  const tempoMedioHoras = Math.floor(tempoMedioMinutos / 60);
+  const tempoMedioMinutosRestante = tempoMedioMinutos % 60;
+  const tempoMedioTexto = tempoMedioHoras > 0 ? `${tempoMedioHoras}h ${tempoMedioMinutosRestante}min` : `${tempoMedioMinutos}min`;
+
+  document.getElementById('relESTotalRegistros').innerText = totalRegistros;
+  document.getElementById('relESTotalNoPatio').innerText = totalNoPatio;
+  document.getElementById('relESTotalSaidas').innerText = totalSaidas;
+  document.getElementById('relESTempoMedio').innerText = tempoMedioTexto;
+}
+
+function limparFiltrosRelatorioES() {
+  document.getElementById('relESDataInicio').value = '';
+  document.getElementById('relESDataFim').value = '';
+  document.getElementById('relESTipoVeiculo').value = '';
+  document.getElementById('relESBusca').value = '';
+  relatorioEntradasSaidas = [];
+  renderRelatorioEntradasSaidas();
+}
+
+function imprimirRelatorioEntradasSaidasPDF() {
+  if (relatorioEntradasSaidas.length === 0) {
+    alert('Gere um relatório primeiro antes de imprimir!');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('l', 'mm', 'a4'); // Paisagem
+
+  // Título
+  doc.setFontSize(16);
+  doc.setTextColor(40, 40, 40);
+  doc.text('Relatório de Entradas e Saídas', 14, 15);
+
+  // Informações do estacionamento
+  doc.setFontSize(10);
+  doc.text(`Estacionamento: ${configuracoes.nomeEstacionamento}`, 14, 22);
+  
+  const dataGeracao = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  doc.text(`Gerado em: ${dataGeracao}`, 14, 27);
+
+  // Filtros aplicados
+  const dataInicio = document.getElementById('relESDataInicio')?.value;
+  const dataFim = document.getElementById('relESDataFim')?.value;
+  const tipoVeiculo = document.getElementById('relESTipoVeiculo')?.value || '';
+  
+  let filtros = 'Filtros: ';
+  if (dataInicio) filtros += `De ${new Date(dataInicio).toLocaleDateString('pt-BR')} `;
+  if (dataFim) filtros += `Até ${new Date(dataFim).toLocaleDateString('pt-BR')} `;
+  if (tipoVeiculo) filtros += `| Tipo: ${tipoVeiculo} `;
+  if (filtros === 'Filtros: ') filtros += 'Nenhum filtro aplicado';
+  
+  doc.text(filtros, 14, 32);
+
+  // Estatísticas
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  const totalNoPatio = relatorioEntradasSaidas.filter(v => veiculosNoPatio.some(veic => veic.id === v.id)).length;
+  const totalSaidas = relatorioEntradasSaidas.filter(v => v.saida).length;
+  const stats = `Total: ${relatorioEntradasSaidas.length} | No Pátio: ${totalNoPatio} | Saídas: ${totalSaidas}`;
+  doc.text(stats, 14, 38);
+
+  // Preparar dados para a tabela
+  const dadosTabela = relatorioEntradasSaidas.map(v => {
+    const marcaModelo = v.marca ? `${v.marca} ${v.modelo}` : v.modelo;
+    const noPatio = veiculosNoPatio.some(veic => veic.id === v.id);
+    const status = noPatio ? 'No Pátio' : 'Finalizado';
+    const dataEntrada = new Date(v.entrada).toLocaleDateString('pt-BR') + ' ' + new Date(v.entrada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const dataSaida = v.saida ? new Date(v.saida).toLocaleDateString('pt-BR') + ' ' + new Date(v.saida).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-';
+    
+    // Calcular tempo de permanência
+    let tempoPermanencia = '-';
+    if (v.saida) {
+      const entrada = new Date(v.entrada);
+      const saida = new Date(v.saida);
+      const diffHoras = Math.floor((saida - entrada) / (1000 * 60 * 60));
+      const diffMinutos = Math.floor(((saida - entrada) % (1000 * 60 * 60)) / (1000 * 60));
+      tempoPermanencia = diffHoras > 0 ? `${diffHoras}h ${diffMinutos}min` : `${diffMinutos}min`;
+    } else {
+      tempoPermanencia = calcularTempoPermanencia(v.entrada);
+    }
+    
+    return [
+      v.placa,
+      marcaModelo,
+      v.tipo,
+      dataEntrada,
+      dataSaida,
+      tempoPermanencia,
+      status
+    ];
+  });
+
+  // Gerar tabela
+  doc.autoTable({
+    startY: 42,
+    head: [['Placa', 'Marca/Modelo', 'Tipo', 'Entrada', 'Saída', 'Permanência', 'Status']],
+    body: dadosTabela,
+    theme: 'striped',
+    headStyles: { fillColor: [52, 152, 219], textColor: 255, fontSize: 8 },
+    bodyStyles: { fontSize: 7 },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 35 },
+      2: { cellWidth: 18 },
+      3: { cellWidth: 32 },
+      4: { cellWidth: 32 },
+      5: { cellWidth: 25 },
+      6: { cellWidth: 20 }
+    },
+    margin: { top: 42, left: 14, right: 14 },
+  });
+
+  // Salvar PDF
+  const nomeArquivo = `relatorio-entradas-saidas-${new Date().toISOString().split('T')[0]}.pdf`;
+  doc.save(nomeArquivo);
+}
+
+// ==================== RELATÓRIO DE FATURAMENTO ====================
+let relatorioFaturamento = [];
+
+function gerarRelatorioFaturamento() {
+  const dataInicio = document.getElementById('relFatDataInicio')?.value;
+  const dataFim = document.getElementById('relFatDataFim')?.value;
+  const formaPagamento = document.getElementById('relFatFormaPagamento')?.value || '';
+  const tipoVeiculo = document.getElementById('relFatTipoVeiculo')?.value || '';
+
+  // Filtrar apenas histórico (veículos que já saíram e tiveram pagamento)
+  relatorioFaturamento = historico.filter(v => {
+    // Filtro por data de saída
+    if (dataInicio && new Date(v.saida) < new Date(dataInicio)) {
+      return false;
+    }
+    if (dataFim && new Date(v.saida) > new Date(new Date(dataFim).setHours(23, 59, 59))) {
+      return false;
+    }
+    // Filtro por forma de pagamento
+    if (formaPagamento && v.formaPagamento !== formaPagamento) {
+      return false;
+    }
+    // Filtro por tipo de veículo
+    if (tipoVeiculo && v.tipo !== tipoVeiculo) {
+      return false;
+    }
+    return true;
+  });
+
+  // Ordenar por data de saída (mais recente primeiro)
+  relatorioFaturamento.sort((a, b) => new Date(b.saida) - new Date(a.saida));
+
+  renderRelatorioFaturamento();
+}
+
+function renderRelatorioFaturamento() {
+  const tbody = document.getElementById('tabelaRelatorioFaturamento')?.querySelector('tbody');
+  const tbodyDiario = document.getElementById('tabelaResumoDiario')?.querySelector('tbody');
+  if (!tbody || !tbodyDiario) return;
+
+  tbody.innerHTML = '';
+  tbodyDiario.innerHTML = '';
+
+  // Totais gerais
+  let totalArrecadado = 0;
+  let totalDinheiro = 0;
+  let totalPix = 0;
+  let totalCartao = 0;
+  let totalCarros = 0;
+  let totalMotos = 0;
+  let totalCaminhoes = 0;
+
+  // Resumo por dia
+  const resumoPorDia = {};
+
+  relatorioFaturamento.forEach(v => {
+    const tr = document.createElement('tr');
+    const marcaModelo = v.marca ? `${v.marca} ${v.modelo}` : v.modelo;
+    const tempo = calcularTempoPermanencia(v.entrada);
+    const pagIcones = {
+      'dinheiro': '💵',
+      'pix': '📱',
+      'cartao': '💳'
+    };
+
+    tr.innerHTML = `
+      <td><strong>${v.placa}</strong></td>
+      <td>${marcaModelo}</td>
+      <td>${getTipoIcone(v.tipo)} ${v.tipo}</td>
+      <td>${formatarData(v.entrada)}</td>
+      <td>${formatarData(v.saida)}</td>
+      <td>${tempo}</td>
+      <td>${formatarMoeda(v.valorCobrado)}</td>
+      <td>${pagIcones[v.formaPagamento] || v.formaPagamento}</td>
+    `;
+    tbody.appendChild(tr);
+
+    // Acumular totais
+    totalArrecadado += v.valorCobrado || 0;
+
+    if (v.formaPagamento === 'dinheiro') totalDinheiro += v.valorCobrado || 0;
+    else if (v.formaPagamento === 'pix') totalPix += v.valorCobrado || 0;
+    else if (v.formaPagamento === 'cartao') totalCartao += v.valorCobrado || 0;
+
+    if (v.tipo === 'carro') totalCarros += v.valorCobrado || 0;
+    else if (v.tipo === 'moto') totalMotos += v.valorCobrado || 0;
+    else if (v.tipo === 'caminhao') totalCaminhoes += v.valorCobrado || 0;
+
+    // Agrupar por dia
+    const dataSaida = new Date(v.saida).toLocaleDateString('pt-BR');
+    if (!resumoPorDia[dataSaida]) {
+      resumoPorDia[dataSaida] = {
+        data: dataSaida,
+        totalSaídas: 0,
+        dinheiro: 0,
+        pix: 0,
+        cartao: 0,
+        totalDia: 0
+      };
+    }
+    resumoPorDia[dataSaida].totalSaídas++;
+    resumoPorDia[dataSaida].totalDia += v.valorCobrado || 0;
+    if (v.formaPagamento === 'dinheiro') resumoPorDia[dataSaida].dinheiro += v.valorCobrado || 0;
+    else if (v.formaPagamento === 'pix') resumoPorDia[dataSaida].pix += v.valorCobrado || 0;
+    else if (v.formaPagamento === 'cartao') resumoPorDia[dataSaida].cartao += v.valorCobrado || 0;
+  });
+
+  // Preencher resumo por dia
+  const diasOrdenados = Object.keys(resumoPorDia).sort((a, b) => {
+    const [diaA, mesA, anoA] = a.split('/');
+    const [diaB, mesB, anoB] = b.split('/');
+    return new Date(anoB, mesB - 1, diaB) - new Date(anoA, mesA - 1, diaA);
+  });
+
+  diasOrdenados.forEach(dia => {
+    const resumo = resumoPorDia[dia];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${resumo.data}</strong></td>
+      <td>${resumo.totalSaídas}</td>
+      <td>${formatarMoeda(resumo.dinheiro)}</td>
+      <td>${formatarMoeda(resumo.pix)}</td>
+      <td>${formatarMoeda(resumo.cartao)}</td>
+      <td><strong>${formatarMoeda(resumo.totalDia)}</strong></td>
+    `;
+    tbodyDiario.appendChild(tr);
+  });
+
+  // Atualizar stats
+  const totalSaidas = relatorioFaturamento.length;
+  const ticketMedio = totalSaidas > 0 ? totalArrecadado / totalSaidas : 0;
+
+  // Valor total do dia (hoje)
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const valorHoje = resumoPorDia[hoje] ? resumoPorDia[hoje].totalDia : 0;
+
+  document.getElementById('relFatTotalArrecadado').innerText = formatarMoeda(totalArrecadado);
+  document.getElementById('relFatTotalSaidas').innerText = totalSaidas;
+  document.getElementById('relFatTicketMedio').innerText = formatarMoeda(ticketMedio);
+  document.getElementById('relFatValorDia').innerText = formatarMoeda(valorHoje);
+
+  document.getElementById('relFatDinheiro').innerText = formatarMoeda(totalDinheiro);
+  document.getElementById('relFatPix').innerText = formatarMoeda(totalPix);
+  document.getElementById('relFatCartao').innerText = formatarMoeda(totalCartao);
+  document.getElementById('relFatValorCarros').innerText = formatarMoeda(totalCarros);
+  document.getElementById('relFatValorMotos').innerText = formatarMoeda(totalMotos);
+  document.getElementById('relFatValorCaminhoes').innerText = formatarMoeda(totalCaminhoes);
+}
+
+function limparFiltrosRelatorioFat() {
+  document.getElementById('relFatDataInicio').value = '';
+  document.getElementById('relFatDataFim').value = '';
+  document.getElementById('relFatFormaPagamento').value = '';
+  document.getElementById('relFatTipoVeiculo').value = '';
+  relatorioFaturamento = [];
+  renderRelatorioFaturamento();
+}
+
+function imprimirRelatorioFaturamentoPDF() {
+  if (relatorioFaturamento.length === 0) {
+    alert('Gere um relatório primeiro antes de imprimir!');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('l', 'mm', 'a4'); // Paisagem
+
+  // Título
+  doc.setFontSize(16);
+  doc.setTextColor(40, 40, 40);
+  doc.text('Relatório de Faturamento', 14, 15);
+
+  // Informações do estacionamento
+  doc.setFontSize(10);
+  doc.text(`Estacionamento: ${configuracoes.nomeEstacionamento}`, 14, 22);
+  
+  const dataGeracao = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  doc.text(`Gerado em: ${dataGeracao}`, 14, 27);
+
+  // Filtros aplicados
+  const dataInicio = document.getElementById('relFatDataInicio')?.value;
+  const dataFim = document.getElementById('relFatDataFim')?.value;
+  const formaPagamento = document.getElementById('relFatFormaPagamento')?.value || '';
+  const tipoVeiculo = document.getElementById('relFatTipoVeiculo')?.value || '';
+  
+  let filtros = 'Filtros: ';
+  if (dataInicio) filtros += `De ${new Date(dataInicio).toLocaleDateString('pt-BR')} `;
+  if (dataFim) filtros += `Até ${new Date(dataFim).toLocaleDateString('pt-BR')} `;
+  if (formaPagamento) {
+    const nomesPag = { 'dinheiro': 'Dinheiro', 'pix': 'PIX', 'cartao': 'Cartão' };
+    filtros += `| Pagamento: ${nomesPag[formaPagamento] || formaPagamento} `;
+  }
+  if (tipoVeiculo) {
+    const nomesTipo = { 'carro': 'Carros', 'moto': 'Motos', 'caminhao': 'Caminhões' };
+    filtros += `| Tipo: ${nomesTipo[tipoVeiculo] || tipoVeiculo} `;
+  }
+  if (filtros === 'Filtros: ') filtros += 'Nenhum filtro aplicado';
+  
+  doc.text(filtros, 14, 32);
+
+  // Estatísticas
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  
+  let totalArrecadado = 0;
+  let totalDinheiro = 0, totalPix = 0, totalCartao = 0;
+  relatorioFaturamento.forEach(v => {
+    totalArrecadado += v.valorCobrado || 0;
+    if (v.formaPagamento === 'dinheiro') totalDinheiro += v.valorCobrado || 0;
+    else if (v.formaPagamento === 'pix') totalPix += v.valorCobrado || 0;
+    else if (v.formaPagamento === 'cartao') totalCartao += v.valorCobrado || 0;
+  });
+
+  const stats = `Total: ${formatarMoeda(totalArrecadado)} | Dinheiro: ${formatarMoeda(totalDinheiro)} | PIX: ${formatarMoeda(totalPix)} | Cartão: ${formatarMoeda(totalCartao)}`;
+  doc.text(stats, 14, 38);
+
+  // Preparar dados para a tabela
+  const dadosTabela = relatorioFaturamento.map(v => {
+    const marcaModelo = v.marca ? `${v.marca} ${v.modelo}` : v.modelo;
+    const tempo = calcularTempoPermanencia(v.entrada);
+    const pagIcones = { 'dinheiro': 'Dinheiro', 'pix': 'PIX', 'cartao': 'Cartão' };
+    const dataEntrada = new Date(v.entrada).toLocaleDateString('pt-BR') + ' ' + new Date(v.entrada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const dataSaida = new Date(v.saida).toLocaleDateString('pt-BR') + ' ' + new Date(v.saida).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    
+    return [
+      v.placa,
+      marcaModelo,
+      v.tipo,
+      dataEntrada,
+      dataSaida,
+      tempo,
+      formatarMoeda(v.valorCobrado),
+      pagIcones[v.formaPagamento] || v.formaPagamento
+    ];
+  });
+
+  // Gerar tabela
+  doc.autoTable({
+    startY: 42,
+    head: [['Placa', 'Marca/Modelo', 'Tipo', 'Entrada', 'Saída', 'Tempo', 'Valor', 'Pagamento']],
+    body: dadosTabela,
+    theme: 'striped',
+    headStyles: { fillColor: [39, 174, 96], textColor: 255, fontSize: 8 },
+    bodyStyles: { fontSize: 7 },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 35 },
+      2: { cellWidth: 18 },
+      3: { cellWidth: 30 },
+      4: { cellWidth: 30 },
+      5: { cellWidth: 20 },
+      6: { cellWidth: 22 },
+      7: { cellWidth: 20 }
+    },
+    margin: { top: 42, left: 14, right: 14 },
+  });
+
+  // Salvar PDF
+  const nomeArquivo = `relatorio-faturamento-${new Date().toISOString().split('T')[0]}.pdf`;
+  doc.save(nomeArquivo);
+}
+
+// ==================== RELATÓRIO DE VAGAS ====================
+function renderRelatorioVagas() {
+  const container = document.getElementById('relVagasContainer');
+  const tbody = document.getElementById('tabelaVagasOcupadas')?.querySelector('tbody');
+  if (!container || !tbody) return;
+
+  container.innerHTML = '';
+  tbody.innerHTML = '';
+
+  const totalVagas = configuracoes.totalVagas;
+  const vagasOcupadas = veiculosNoPatio.length;
+  const vagasLivres = totalVagas - vagasOcupadas;
+  const taxaOcupacao = totalVagas > 0 ? Math.round((vagasOcupadas / totalVagas) * 100) : 0;
+
+  // Atualizar stats
+  document.getElementById('relVagasTotal').innerText = totalVagas;
+  document.getElementById('relVagasOcupadas').innerText = vagasOcupadas;
+  document.getElementById('relVagasLivres').innerText = vagasLivres;
+  document.getElementById('relVagasOcupacao').innerText = taxaOcupacao + '%';
+
+  // Gerar mapa de vagas
+  for (let i = 1; i <= totalVagas; i++) {
+    const veiculo = veiculosNoPatio.find(v => v.vaga === i.toString());
+    const div = document.createElement('div');
+    
+    if (veiculo) {
+      div.className = 'vaga-card ocupada';
+      div.title = `Ocupada por ${veiculo.placa}`;
+      const marcaModelo = veiculo.marca ? `${veiculo.marca} ${veiculo.modelo}` : veiculo.modelo;
+      div.innerHTML = `
+        <div class="vaga-numero">${i}</div>
+        <div class="vaga-status">Ocupada</div>
+        <div class="vaga-placa">${veiculo.placa}</div>
+        <div class="vaga-modelo" style="font-size: 8px; opacity: 0.8;">${marcaModelo}</div>
+      `;
+    } else {
+      div.className = 'vaga-card livre';
+      div.title = `Vaga ${i} - Livre`;
+      div.innerHTML = `
+        <div class="vaga-numero">${i}</div>
+        <div class="vaga-status">Livre</div>
+      `;
+    }
+    
+    container.appendChild(div);
+  }
+
+  // Preencher tabela de veículos estacionados
+  veiculosNoPatio.forEach(v => {
+    const tr = document.createElement('tr');
+    const marcaModelo = v.marca ? `${v.marca} ${v.modelo}` : v.modelo;
+    const tempo = calcularTempoPermanencia(v.entrada);
+    
+    tr.innerHTML = `
+      <td><strong>${v.vaga}</strong></td>
+      <td>${v.placa}</td>
+      <td>${marcaModelo}</td>
+      <td>${v.cor}</td>
+      <td>${getTipoIcone(v.tipo)} ${v.tipo}</td>
+      <td>${formatarData(v.entrada)}</td>
+      <td>${tempo}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function imprimirRelatorioVagasPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('l', 'mm', 'a4'); // Paisagem
+
+  const totalVagas = configuracoes.totalVagas;
+  const vagasOcupadas = veiculosNoPatio.length;
+  const vagasLivres = totalVagas - vagasOcupadas;
+  const taxaOcupacao = totalVagas > 0 ? Math.round((vagasOcupadas / totalVagas) * 100) : 0;
+
+  // Título
+  doc.setFontSize(16);
+  doc.setTextColor(40, 40, 40);
+  doc.text('Relatório de Vagas', 14, 15);
+
+  // Informações do estacionamento
+  doc.setFontSize(10);
+  doc.text(`Estacionamento: ${configuracoes.nomeEstacionamento}`, 14, 22);
+  
+  const dataGeracao = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  doc.text(`Gerado em: ${dataGeracao}`, 14, 27);
+
+  // Estatísticas
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  const stats = `Total: ${totalVagas} | Ocupadas: ${vagasOcupadas} | Livres: ${vagasLivres} | Ocupação: ${taxaOcupacao}%`;
+  doc.text(stats, 14, 33);
+
+  // Preparar dados para a tabela
+  const dadosTabela = veiculosNoPatio.map(v => {
+    const marcaModelo = v.marca ? `${v.marca} ${v.modelo}` : v.modelo;
+    const tempo = calcularTempoPermanencia(v.entrada);
+    const dataEntrada = new Date(v.entrada).toLocaleDateString('pt-BR') + ' ' + new Date(v.entrada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    
+    return [
+      v.vaga,
+      v.placa,
+      marcaModelo,
+      v.cor,
+      v.tipo,
+      dataEntrada,
+      tempo
+    ];
+  });
+
+  // Gerar tabela
+  doc.autoTable({
+    startY: 38,
+    head: [['Vaga', 'Placa', 'Marca/Modelo', 'Cor', 'Tipo', 'Entrada', 'Tempo']],
+    body: dadosTabela,
+    theme: 'striped',
+    headStyles: { fillColor: [231, 76, 60], textColor: 255, fontSize: 8 },
+    bodyStyles: { fontSize: 7 },
+    columnStyles: {
+      0: { cellWidth: 15 },
+      1: { cellWidth: 20 },
+      2: { cellWidth: 40 },
+      3: { cellWidth: 25 },
+      4: { cellWidth: 20 },
+      5: { cellWidth: 35 },
+      6: { cellWidth: 25 }
+    },
+    margin: { top: 38, left: 14, right: 14 },
+  });
+
+  // Salvar PDF
+  const nomeArquivo = `relatorio-vagas-${new Date().toISOString().split('T')[0]}.pdf`;
+  doc.save(nomeArquivo);
+}
+
 // ==================== GERAL ====================
 function renderAll() {
   renderVagas();
   renderPatio();
   renderHistorico();
+  renderRelatorio();
+  renderRelatorioEntradasSaidas();
+  renderRelatorioFaturamento();
+  renderRelatorioVagas();
   carregarConfiguracoes();
 
   // Atualizar nome do estacionamento

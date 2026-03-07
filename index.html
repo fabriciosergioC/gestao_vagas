@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sistema de Controle de Estacionamento</title>
 <link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
@@ -65,6 +67,7 @@
   <button class="menu-btn" onclick="showSection('patio')">🅿️ Pátio</button>
   <button class="menu-btn" onclick="showSection('saida')">💰 Saída / Pagamento</button>
   <button class="menu-btn" onclick="showSection('historico')">📊 Histórico</button>
+  <button class="menu-btn" onclick="showSection('relatorios')">📋 Relatórios</button>
   <button class="menu-btn" onclick="showSection('configuracoes')">⚙️ Configurações</button>
   
   <div class="logout-section">
@@ -283,6 +286,334 @@
       </thead>
       <tbody></tbody>
     </table>
+  </div>
+
+  <!-- Seção: Relatórios -->
+  <div id="relatorios" class="section">
+    <h1>📋 Relatórios</h1>
+
+    <!-- Submenu de Relatórios -->
+    <div class="form-group">
+      <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+        <button class="btn-primary" id="btnRelatorioEntradas" onclick="mostrarSubRelatorio('entradas')">🚗 Entradas de Veículos</button>
+        <button class="btn-info" id="btnRelatorioEntradasSaidas" onclick="mostrarSubRelatorio('entradas-saidas')">Entradas e Saídas</button>
+        <button class="btn-info" id="btnRelatorioFaturamento" onclick="mostrarSubRelatorio('faturamento')">Faturamento</button>
+        <button class="btn-info" id="btnRelatorioVagas" onclick="mostrarSubRelatorio('vagas')">Vagas</button>
+      </div>
+    </div>
+
+    <!-- Relatório de Entradas -->
+    <div id="subRelatorioEntradas">
+      <div class="form-group">
+        <h3 style="margin-bottom: 15px;">Filtros do Relatório</h3>
+        <div class="form-row">
+          <label>Data Início:</label>
+          <input type="date" id="relDataInicio">
+        </div>
+        <div class="form-row">
+          <label>Data Fim:</label>
+          <input type="date" id="relDataFim">
+        </div>
+        <div class="form-row">
+          <label>Tipo de Veículo:</label>
+          <select id="relTipoVeiculo">
+            <option value="">Todos os tipos</option>
+            <option value="carro">🚗 Carros</option>
+            <option value="moto">🏍️ Motos</option>
+            <option value="caminhao">🚚 Caminhões</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <input type="text" id="relBusca" placeholder="Buscar por placa ou modelo...">
+        </div>
+        <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn-primary" onclick="gerarRelatorioEntradas()">🔍 Gerar Relatório</button>
+          <button class="btn-info" onclick="imprimirRelatorioEntradasPDF()">📄 Imprimir PDF</button>
+          <button class="btn-warning" onclick="limparFiltrosRelatorio()">🧹 Limpar Filtros</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="relTotalEntradas">0</div>
+          <div class="stat-label">Total de Entradas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="relTotalCarros">0</div>
+          <div class="stat-label">Carros</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="relTotalMotos">0</div>
+          <div class="stat-label">Motos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="relTotalCaminhoes">0</div>
+          <div class="stat-label">Caminhões</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <h3 style="margin-bottom: 15px;">Resultado do Relatório</h3>
+        <table id="tabelaRelatorio">
+          <thead>
+            <tr>
+              <th>Placa</th>
+              <th>Marca/Modelo</th>
+              <th>Cor</th>
+              <th>Tipo</th>
+              <th>Proprietário</th>
+              <th>Telefone</th>
+              <th>Vaga</th>
+              <th>Data/Hora Entrada</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Relatório de Entradas e Saídas -->
+    <div id="subRelatorioEntradasSaidas" style="display: none;">
+      <div class="form-group">
+        <h3 style="margin-bottom: 15px;">Filtros do Relatório</h3>
+        <div class="form-row">
+          <label>Data Início:</label>
+          <input type="date" id="relESDataInicio">
+        </div>
+        <div class="form-row">
+          <label>Data Fim:</label>
+          <input type="date" id="relESDataFim">
+        </div>
+        <div class="form-row">
+          <label>Tipo de Veículo:</label>
+          <select id="relESTipoVeiculo">
+            <option value="">Todos os tipos</option>
+            <option value="carro">🚗 Carros</option>
+            <option value="moto">🏍️ Motos</option>
+            <option value="caminhao">🚚 Caminhões</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <input type="text" id="relESBusca" placeholder="Buscar por placa ou modelo...">
+        </div>
+        <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn-primary" onclick="gerarRelatorioEntradasSaidas()">🔍 Gerar Relatório</button>
+          <button class="btn-info" onclick="imprimirRelatorioEntradasSaidasPDF()">📄 Imprimir PDF</button>
+          <button class="btn-warning" onclick="limparFiltrosRelatorioES()">🧹 Limpar Filtros</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="relESTotalRegistros">0</div>
+          <div class="stat-label">Total de Registros</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="relESTotalNoPatio">0</div>
+          <div class="stat-label">No Pátio</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="relESTotalSaidas">0</div>
+          <div class="stat-label">Saídas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="relESTempoMedio">0h</div>
+          <div class="stat-label">Tempo Médio</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <h3 style="margin-bottom: 15px;">Resultado do Relatório</h3>
+        <table id="tabelaRelatorioES">
+          <thead>
+            <tr>
+              <th>Placa</th>
+              <th>Marca/Modelo</th>
+              <th>Tipo</th>
+              <th>Data e Hora de Entrada</th>
+              <th>Data e Hora de Saída</th>
+              <th>Tempo de Permanência</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Relatório de Faturamento -->
+    <div id="subRelatorioFaturamento" style="display: none;">
+      <div class="form-group">
+        <h3 style="margin-bottom: 15px;">Filtros do Relatório</h3>
+        <div class="form-row">
+          <label>Data Início:</label>
+          <input type="date" id="relFatDataInicio">
+        </div>
+        <div class="form-row">
+          <label>Data Fim:</label>
+          <input type="date" id="relFatDataFim">
+        </div>
+        <div class="form-row">
+          <label>Forma de Pagamento:</label>
+          <select id="relFatFormaPagamento">
+            <option value="">Todas as formas</option>
+            <option value="dinheiro">💵 Dinheiro</option>
+            <option value="pix">📱 PIX</option>
+            <option value="cartao">💳 Cartão</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Tipo de Veículo:</label>
+          <select id="relFatTipoVeiculo">
+            <option value="">Todos os tipos</option>
+            <option value="carro">🚗 Carros</option>
+            <option value="moto">🏍️ Motos</option>
+            <option value="caminhao">🚚 Caminhões</option>
+          </select>
+        </div>
+        <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn-primary" onclick="gerarRelatorioFaturamento()">🔍 Gerar Relatório</button>
+          <button class="btn-info" onclick="imprimirRelatorioFaturamentoPDF()">📄 Imprimir PDF</button>
+          <button class="btn-warning" onclick="limparFiltrosRelatorioFat()">🧹 Limpar Filtros</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="relFatTotalArrecadado" style="color: #27ae60;">R$ 0,00</div>
+          <div class="stat-label">Total Arrecadado</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="relFatTotalSaidas">0</div>
+          <div class="stat-label">Total de Saídas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="relFatTicketMedio">R$ 0,00</div>
+          <div class="stat-label">Ticket Médio</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="relFatValorDia" style="color: #e67e22;">R$ 0,00</div>
+          <div class="stat-label">Valor Total do Dia</div>
+        </div>
+      </div>
+
+      <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+        <div class="stat-card">
+          <div class="stat-value" id="relFatDinheiro" style="color: #27ae60;">R$ 0,00</div>
+          <div class="stat-label">💵 Dinheiro</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="relFatPix" style="color: #8e44ad;">R$ 0,00</div>
+          <div class="stat-label">📱 PIX</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="relFatCartao" style="color: #2980b9;">R$ 0,00</div>
+          <div class="stat-label">💳 Cartão</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="relFatValorCarros" style="color: #3498db;">R$ 0,00</div>
+          <div class="stat-label">🚗 Carros</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="relFatValorMotos" style="color: #e67e22;">R$ 0,00</div>
+          <div class="stat-label">🏍️ Motos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="relFatValorCaminhoes" style="color: #9b59b6;">R$ 0,00</div>
+          <div class="stat-label">🚚 Caminhões</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <h3 style="margin-bottom: 15px;">Resumo por Dia</h3>
+        <table id="tabelaResumoDiario">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Total Saídas</th>
+              <th>Dinheiro</th>
+              <th>PIX</th>
+              <th>Cartão</th>
+              <th>Total do Dia</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="form-group">
+        <h3 style="margin-bottom: 15px;">Detalhamento por Veículo</h3>
+        <table id="tabelaRelatorioFaturamento">
+          <thead>
+            <tr>
+              <th>Placa</th>
+              <th>Marca/Modelo</th>
+              <th>Tipo</th>
+              <th>Entrada</th>
+              <th>Saída</th>
+              <th>Tempo</th>
+              <th>Valor</th>
+              <th>Forma Pagto</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Relatório de Vagas -->
+    <div id="subRelatorioVagas" style="display: none;">
+      <div class="form-group">
+        <h3 style="margin-bottom: 15px;">Visão Geral das Vagas</h3>
+        <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn-primary" onclick="renderRelatorioVagas()">🔄 Atualizar</button>
+          <button class="btn-info" onclick="imprimirRelatorioVagasPDF()">📄 Imprimir PDF</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="relVagasTotal">0</div>
+          <div class="stat-label">Total de Vagas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="relVagasOcupadas" style="color: #e74c3c;">0</div>
+          <div class="stat-label">Vagas Ocupadas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="relVagasLivres" style="color: #27ae60;">0</div>
+          <div class="stat-label">Vagas Livres</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="relVagasOcupacao" style="color: #f39c12;">0%</div>
+          <div class="stat-label">Taxa de Ocupação</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <h3 style="margin-bottom: 15px;">Mapa de Vagas</h3>
+        <div class="vagas-container" id="relVagasContainer"></div>
+      </div>
+
+      <div class="form-group">
+        <h3 style="margin-bottom: 15px;">Veículos Estacionados</h3>
+        <table id="tabelaVagasOcupadas">
+          <thead>
+            <tr>
+              <th>Vaga</th>
+              <th>Placa</th>
+              <th>Marca/Modelo</th>
+              <th>Cor</th>
+              <th>Tipo</th>
+              <th>Entrada</th>
+              <th>Tempo</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <!-- Seção: Configurações -->
