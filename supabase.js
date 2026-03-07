@@ -449,7 +449,55 @@ async function syncToSupabase() {
     // Salvar usuários
     await saveUsuarios(usuarios);
 
+    // Salvar veículos no pátio (upsert para evitar duplicação)
+    for (const veiculo of veiculosNoPatio) {
+      await supabaseClient
+        .from('veiculos')
+        .upsert({
+          id: veiculo.id,
+          placa: veiculo.placa,
+          marca: veiculo.marca,
+          modelo: veiculo.modelo,
+          cor: veiculo.cor,
+          tipo: veiculo.tipo,
+          proprietario: veiculo.proprietario || null,
+          telefone: veiculo.telefone || null,
+          vaga: veiculo.vaga,
+          entrada: veiculo.entrada,
+          saida: null
+        }, {
+          onConflict: 'id'
+        });
+    }
+
+    // Salvar histórico (upsert para evitar duplicação)
+    for (const registro of historico) {
+      await supabaseClient
+        .from('historico')
+        .upsert({
+          id: registro.id,
+          veiculo_id: registro.id,
+          placa: registro.placa,
+          marca: registro.marca,
+          modelo: registro.modelo,
+          cor: registro.cor,
+          tipo: registro.tipo,
+          proprietario: registro.proprietario || null,
+          telefone: registro.telefone || null,
+          vaga: registro.vaga,
+          entrada: registro.entrada,
+          saida: registro.saida,
+          tempo_permanencia: registro.tempoPermanencia || null,
+          valor_cobrado: registro.valorCobrado,
+          forma_pagamento: registro.formaPagamento
+        }, {
+          onConflict: 'id'
+        });
+    }
+
     console.log('✅ Dados sincronizados para o Supabase');
+    console.log(`   - ${veiculosNoPatio.length} veículo(s) no pátio`);
+    console.log(`   - ${historico.length} registro(s) no histórico`);
     return true;
   } catch (err) {
     console.error('Erro na sincronização:', err.message);

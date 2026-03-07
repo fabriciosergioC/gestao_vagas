@@ -188,11 +188,17 @@ async function saveStorage() {
   
   // Sincronizar com Supabase em background (não bloqueante)
   if (window.supabaseFunctions?.isSupabaseAvailable()) {
-    try {
-      await window.supabaseFunctions.syncToSupabase();
-    } catch (err) {
-      console.error('Erro ao sincronizar com Supabase:', err);
-    }
+    // Usar setTimeout para não bloquear a UI
+    setTimeout(async () => {
+      try {
+        const sucesso = await window.supabaseFunctions.syncToSupabase();
+        if (sucesso) {
+          console.log('✅ Dados salvos no Supabase');
+        }
+      } catch (err) {
+        console.error('Erro ao sincronizar com Supabase:', err);
+      }
+    }, 100);
   }
 }
 
