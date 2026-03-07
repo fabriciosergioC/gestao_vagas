@@ -22,11 +22,8 @@ function saveUsuarios(usuarios) {
 }
 
 function verificarLogin() {
-  if (usuarioAtual) {
-    mostrarSistema();
-  } else {
-    mostrarLogin();
-  }
+  // Sempre exige login ao abrir a página
+  mostrarLogin();
 }
 
 function mostrarLogin() {
@@ -47,53 +44,25 @@ function mostrarSistema() {
 
 function fazerLogin(event) {
   event.preventDefault();
-  
+
   const senha = document.getElementById('loginSenha').value;
-  
+
   if (!senha) {
     alert('Digite a senha!');
     return;
   }
-  
-  // Verifica senha padrão para primeiro acesso
+
+  // Verifica senha padrão
   if (senha === SENHA_PADRAO) {
-    const usuarios = getUsuarios();
-    const usuarioExistente = usuarios.find(u => u.usuario === 'admin');
-    
-    // Se usuário já existe e já trocou a senha
-    if (usuarioExistente && usuarioExistente.senha !== SENHA_PADRAO) {
-      alert('Senha incorreta!');
-      document.getElementById('loginSenha').value = '';
-      document.getElementById('loginSenha').focus();
-      return;
-    }
-    
-    // Primeiro acesso com senha padrão
-    usuarioAtual = 'admin';
-    localStorage.setItem("usuarioAtual", usuarioAtual);
-    
-    if (!usuarioExistente) {
-      usuarios.push({ usuario: 'admin', senha: SENHA_PADRAO });
-      saveUsuarios(usuarios);
-    }
-    
-    // Forçar troca de senha
-    mostrarTrocaSenha();
-    return;
-  }
-  
-  const usuarios = getUsuarios();
-  const usuarioEncontrado = usuarios.find(u => u.usuario === 'admin' && u.senha === senha);
-  
-  if (usuarioEncontrado) {
     usuarioAtual = 'admin';
     localStorage.setItem("usuarioAtual", usuarioAtual);
     mostrarSistema();
-  } else {
-    alert('Senha incorreta!');
-    document.getElementById('loginSenha').value = '';
-    document.getElementById('loginSenha').focus();
+    return;
   }
+
+  alert('Senha incorreta!');
+  document.getElementById('loginSenha').value = '';
+  document.getElementById('loginSenha').focus();
 }
 
 function fazerLogout() {
@@ -1620,7 +1589,9 @@ function renderAll() {
 }
 
 // Inicialização
-verificarLogin();
+document.addEventListener('DOMContentLoaded', function() {
+  verificarLogin();
+});
 
 // Atualizar tempo no pátio a cada minuto
 setInterval(() => {
