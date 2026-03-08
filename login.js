@@ -24,7 +24,7 @@ function verificarSessao() {
 }
 
 /**
- * Carrega lista de clientes do Supabase
+ * Carrega lista de empresas do Supabase
  */
 async function carregarClientes() {
   const loadingEl = document.getElementById('loadingClientes');
@@ -58,12 +58,12 @@ async function carregarClientes() {
     loadingEl.style.display = 'none';
 
     if (clientes.length === 0) {
-      selectEl.innerHTML = '<option value="">Nenhum cliente cadastrado</option>';
+      selectEl.innerHTML = '<option value="">Nenhuma empresa cadastrada</option>';
       return;
     }
 
     // Preencher select
-    selectEl.innerHTML = '<option value="">Selecione o cliente...</option>';
+    selectEl.innerHTML = '<option value="">Selecione a empresa...</option>';
     clientes.forEach(cliente => {
       const option = document.createElement('option');
       option.value = cliente.id;
@@ -109,10 +109,10 @@ async function fazerLogin(event) {
   const btnLogin = document.getElementById('btnLogin');
   const loadingMessage = document.getElementById('loadingClientes');
 
-  // Validar cliente selecionado
+  // Validar empresa selecionada
   const clienteId = clienteSelect.value;
   if (!clienteId) {
-    mostrarErro('Selecione um cliente!');
+    mostrarErro('Selecione uma empresa!');
     return;
   }
 
@@ -175,7 +175,7 @@ async function fazerLogin(event) {
 }
 
 /**
- * Cadastra novo cliente
+ * Cadastra nova empresa
  */
 async function cadastrarCliente(event) {
   event.preventDefault();
@@ -204,12 +204,54 @@ async function cadastrarCliente(event) {
     return;
   }
 
+  if (adminUsuario.length < 3) {
+    errorEl.innerText = '❌ Usuário deve ter pelo menos 3 caracteres!';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  if (adminSenha.length < 4) {
+    errorEl.innerText = '❌ Senha deve ter pelo menos 4 caracteres!';
+    errorEl.style.display = 'block';
+    return;
+  }
+
   // Mostrar loading
   btnCadastrar.disabled = true;
   btnCadastrar.innerText = '⏳ Cadastrando...';
 
   try {
-    // 1. Inserir cliente
+    // 1. Verificar se já existe cliente com mesmo nome fantasia
+    const { data: clienteExistente, error: errorClienteExistente } = await window.supabaseClient
+      .from('clientes')
+      .select('id')
+      .eq('nome_fantasia', nomeFantasia)
+      .maybeSingle();
+
+    if (errorClienteExistente) {
+      throw errorClienteExistente;
+    }
+
+    if (clienteExistente) {
+      throw new Error('Já existe uma empresa cadastrada com este nome fantasia!');
+    }
+
+    // 2. Verificar se já existe usuário com este nome em QUALQUER cliente
+    const { data: usuarioExistente, error: errorUsuarioExistente } = await window.supabaseClient
+      .from('usuarios')
+      .select('id, cliente_id')
+      .eq('usuario', adminUsuario)
+      .maybeSingle();
+
+    if (errorUsuarioExistente && !errorUsuarioExistente.message.includes('No rows found')) {
+      throw errorUsuarioExistente;
+    }
+
+    if (usuarioExistente) {
+      throw new Error('Este usuário já existe! Escolha outro nome de usuário.');
+    }
+
+    // 3. Inserir cliente
     const { data: cliente, error: errorCliente } = await window.supabaseClient
       .from('clientes')
       .insert([{
@@ -224,7 +266,7 @@ async function cadastrarCliente(event) {
       throw errorCliente;
     }
 
-    // 2. Inserir usuário admin
+    // 4. Inserir usuário admin vinculado ao novo cliente
     const { error: errorUsuario } = await window.supabaseClient
       .from('usuarios')
       .insert([{
@@ -236,12 +278,18 @@ async function cadastrarCliente(event) {
       }]);
 
     if (errorUsuario) {
-      throw errorUsuario;
+      // Rollback: deletar o cliente se falhar ao criar usuário
+      await window.supabaseClient
+        .from('clientes')
+        .delete()
+        .eq('id', cliente.id);
+      
+      throw new Error('Erro ao criar usuário. Cliente não foi cadastrado.');
     }
 
     // Sucesso
     successEl.innerHTML = `
-      <strong>✅ Cliente cadastrado!</strong><br>
+      <strong>✅ Empresa cadastrada!</strong><br>
       Redirecionando...
     `;
     successEl.style.display = 'block';
@@ -250,12 +298,28 @@ async function cadastrarCliente(event) {
     setTimeout(() => {
       fecharModalCadastro();
       carregarClientes();
-      mostrarSucesso('Cliente cadastrado com sucesso!');
+      mostrarSucesso('Empresa cadastrada com sucesso!');
     }, 1500);
 
   } catch (err) {
     console.error('Erro ao cadastrar cliente:', err);
-    errorEl.innerText = '❌ Erro ao cadastrar: ' + err.message;
+    
+    // Mensagens mais amigáveis para erros comuns
+    let mensagemErro = '❌ Erro ao cadastrar: ' + err.message;
+    
+    if (err.message.includes('Já existe um cliente cadastrado com este nome fantasia')) {
+      mensagemErro = '❌ Já existe uma empresa cadastrada com este nome fantasia!';
+    } else if (err.message.includes('Este usuário já existe')) {
+      mensagemErro = '❌ Este usuário já existe! Escolha outro nome de usuário.';
+    } else if (err.message.includes('duplicate key') || err.message.includes('usuarios_usuario_key')) {
+      mensagemErro = '❌ Este usuário já existe! Escolha outro nome de usuário.';
+    } else if (err.message.includes('clientes_nome_fantasia_key')) {
+      mensagemErro = '❌ Já existe uma empresa cadastrada com este nome fantasia!';
+    } else if (err.message.includes('usuarios_cliente_usuario_unique')) {
+      mensagemErro = '❌ Este usuário já existe nesta empresa! Escolha outro nome.';
+    }
+    
+    errorEl.innerText = mensagemErro;
     errorEl.style.display = 'block';
   } finally {
     btnCadastrar.disabled = false;
