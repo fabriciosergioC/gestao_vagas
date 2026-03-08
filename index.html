@@ -20,6 +20,7 @@
   <button class="menu-btn" onclick="showSection('patio')">🅿️ Pátio</button>
   <button class="menu-btn" onclick="showSection('saida')">💰 Saída / Pagamento</button>
   <button class="menu-btn" onclick="showSection('historico')">📊 Histórico</button>
+  <button class="menu-btn" onclick="showSection('relatorios')">📈 Relatórios</button>
 
   <div class="logout-section">
     <button class="menu-btn btn-logout" onclick="fazerLogout()">🚪 Sair</button>
@@ -235,6 +236,77 @@
       </thead>
       <tbody></tbody>
     </table>
+  </div>
+
+  <!-- Seção: Relatórios -->
+  <div id="relatorios" class="section">
+    <h1>📈 Relatório de Movimentação</h1>
+
+    <div class="form-group">
+      <h3 style="margin-bottom: 15px;">📊 Relatório de Movimentação de Veículos</h3>
+      
+      <div class="form-row" style="margin-bottom: 20px;">
+        <div>
+          <label style="display: block; margin-bottom: 5px; color: #fff;">Data Início:</label>
+          <input type="date" id="relatorioDataInicio" style="padding: 10px; border-radius: 5px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.95);">
+        </div>
+        <div>
+          <label style="display: block; margin-bottom: 5px; color: #fff;">Data Fim:</label>
+          <input type="date" id="relatorioDataFim" style="padding: 10px; border-radius: 5px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.95);">
+        </div>
+        <div style="display: flex; align-items: flex-end;">
+          <button class="btn-primary" onclick="gerarRelatorio()" style="flex: 1;">🔍 Gerar Relatório</button>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <button class="btn-primary" onclick="imprimirRelatorio()" style="flex: 1;">🖨️ Imprimir Relatório</button>
+        <button class="btn-primary" onclick="exportarRelatorio()" style="flex: 1;">📥 Exportar Excel</button>
+      </div>
+    </div>
+
+    <!-- Cards de Resumo -->
+    <div class="stats-grid" id="resumoRelatorio" style="display: none;">
+      <div class="stat-card">
+        <div class="stat-value" id="statTotalVeiculosRelatorio" style="color: #3498db;">0</div>
+        <div class="stat-label">Total de Veículos</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statFaturamentoRelatorio" style="color: #27ae60;">R$ 0,00</div>
+        <div class="stat-label">Faturamento Total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statTicketMedioRelatorio" style="color: #e74c3c;">R$ 0,00</div>
+        <div class="stat-label">Ticket Médio</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statPermanenciaMediaRelatorio" style="color: #f39c12;">0h</div>
+        <div class="stat-label">Permanência Média</div>
+      </div>
+    </div>
+
+    <!-- Tabela do Relatório -->
+    <div style="overflow-x: auto;">
+      <table id="tabelaRelatorio">
+        <thead>
+          <tr>
+            <th>Placa</th>
+            <th>Veículo</th>
+            <th>Tipo</th>
+            <th>Entrada</th>
+            <th>Saída</th>
+            <th>Permanência</th>
+            <th>Valor</th>
+            <th>Pagamento</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 40px; color: #95a5a6;">Selecione as datas e clique em "Gerar Relatório"</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
 </div>

@@ -607,6 +607,158 @@ function renderAll() {
   console.log('✅ renderAll() concluído');
 }
 
+// ==================== RELATÓRIOS ====================
+
+/**
+ * Gera relatório de movimentação de veículos
+ */
+function gerarRelatorio() {
+  const dataInicio = document.getElementById('relatorioDataInicio')?.value;
+  const dataFim = document.getElementById('relatorioDataFim')?.value;
+  const tbody = document.querySelector('#tabelaRelatorio tbody');
+  const resumoRelatorio = document.getElementById('resumoRelatorio');
+
+  if (!dataInicio || !dataFim) {
+    alert('Selecione as datas de início e fim!');
+    return;
+  }
+
+  // Filtrar histórico pelo período
+  const inicio = new Date(dataInicio);
+  inicio.setHours(0, 0, 0);
+  
+  const fim = new Date(dataFim);
+  fim.setHours(23, 59, 59);
+
+  const filtrados = historico.filter(h => {
+    const dataSaida = new Date(h.saida);
+    return dataSaida >= inicio && dataSaida <= fim;
+  });
+
+  // Ordenar por data de saída
+  filtrados.sort((a, b) => new Date(b.saida) - new Date(a.saida));
+
+  // Preencher tabela
+  tbody.innerHTML = '';
+  
+  if (filtrados.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #95a5a6;">Nenhum veículo no período selecionado</td></tr>';
+    resumoRelatorio.style.display = 'none';
+    return;
+  }
+
+  filtrados.forEach(h => {
+    const tr = document.createElement('tr');
+    const tempo = calcularTempoPermanencia(h.entrada);
+    const pagIcones = { 'dinheiro': '💵', 'pix': '📱', 'cartao': '💳' };
+    const marcaModelo = h.marca ? `${h.marca} ${h.modelo}` : h.modelo;
+    const tipoIcone = getTipoIcone(h.tipo);
+    
+    tr.innerHTML = `
+      <td><strong>${h.placa}</strong></td>
+      <td>${marcaModelo}</td>
+      <td>${tipoIcone} ${h.tipo}</td>
+      <td>${formatarData(h.entrada)}</td>
+      <td>${formatarData(h.saida)}</td>
+      <td>${tempo}</td>
+      <td style="color: #27ae60; font-weight: 600;">${formatarMoeda(h.valorCobrado)}</td>
+      <td>${pagIcones[h.formaPagamento] || h.formaPagamento}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Calcular resumo
+  const totalVeiculos = filtrados.length;
+  const faturamento = filtrados.reduce((acc, h) => acc + (h.valorCobrado || 0), 0);
+  const ticketMedio = totalVeiculos > 0 ? faturamento / totalVeiculos : 0;
+  
+  // Calcular permanência média em horas
+  const totalPermanenciaMs = filtrados.reduce((acc, h) => {
+    const entrada = new Date(h.entrada);
+    const saida = new Date(h.saida);
+    return acc + (saida - entrada);
+  }, 0);
+  const permanenciaMediaHoras = totalVeiculos > 0 ? (totalPermanenciaMs / totalVeiculos) / (1000 * 60 * 60) : 0;
+
+  // Exibir resumo
+  document.getElementById('statTotalVeiculosRelatorio').innerText = totalVeiculos;
+  document.getElementById('statFaturamentoRelatorio').innerText = formatarMoeda(faturamento);
+  document.getElementById('statTicketMedioRelatorio').innerText = formatarMoeda(ticketMedio);
+  document.getElementById('statPermanenciaMediaRelatorio').innerText = permanenciaMediaHoras.toFixed(1) + 'h';
+  
+  resumoRelatorio.style.display = 'grid';
+}
+
+/**
+ * Imprime relatório
+ */
+function imprimirRelatorio() {
+  const dataInicio = document.getElementById('relatorioDataInicio')?.value;
+  const dataFim = document.getElementById('relatorioDataFim')?.value;
+  
+  if (!dataInicio || !dataFim) {
+    alert('Gere o relatório primeiro!');
+    return;
+  }
+
+  window.print();
+}
+
+/**
+ * Exporta relatório para Excel (CSV)
+ */
+function exportarRelatorio() {
+  const dataInicio = document.getElementById('relatorioDataInicio')?.value;
+  const dataFim = document.getElementById('relatorioDataFim')?.value;
+  
+  if (!dataInicio || !dataFim) {
+    alert('Gere o relatório primeiro!');
+    return;
+  }
+
+  // Filtrar histórico
+  const inicio = new Date(dataInicio);
+  inicio.setHours(0, 0, 0);
+  
+  const fim = new Date(dataFim);
+  fim.setHours(23, 59, 59);
+
+  const filtrados = historico.filter(h => {
+    const dataSaida = new Date(h.saida);
+    return dataSaida >= inicio && dataSaida <= fim;
+  });
+
+  if (filtrados.length === 0) {
+    alert('Nenhum dado para exportar!');
+    return;
+  }
+
+  // Criar CSV
+  let csv = 'PLACA;VEICULO;TIPO;ENTRADA;SAIDA;PERMANENCIA;VALOR;PAGAMENTO\n';
+  
+  filtrados.forEach(h => {
+    const marcaModelo = h.marca ? `${h.marca} ${h.modelo}` : h.modelo;
+    const tempo = calcularTempoPermanencia(h.entrada);
+    const entrada = formatarData(h.entrada).replace(',', '.');
+    const saida = formatarData(h.saida).replace(',', '.');
+    
+    csv += `${h.placa};${marcaModelo};${h.tipo};${entrada};${saida};${tempo};${h.valorCobrado};${h.formaPagamento}\n`;
+  });
+
+  // Criar blob e download
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', `relatorio_movimentacao_${dataInicio}_${dataFim}.csv`);
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 // ==================== INICIALIZAR ====================
 
 document.addEventListener('DOMContentLoaded', async () => {
