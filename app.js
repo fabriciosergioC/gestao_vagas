@@ -762,28 +762,6 @@ function exportarRelatorio() {
 // ==================== RELATÓRIO DE FATURAMENTO ====================
 
 /**
- * Mostra aba selecionada do relatório
- */
-function mostrarAbaRelatorio(aba) {
-  const abaMovimentacao = document.getElementById('abaMovimentacao');
-  const abaFaturamento = document.getElementById('abaFaturamento');
-  const btnMovimentacao = document.getElementById('btnMovimentacao');
-  const btnFaturamento = document.getElementById('btnFaturamento');
-
-  if (aba === 'movimentacao') {
-    abaMovimentacao.style.display = 'block';
-    abaFaturamento.style.display = 'none';
-    btnMovimentacao.classList.add('active');
-    btnFaturamento.classList.remove('active');
-  } else {
-    abaMovimentacao.style.display = 'none';
-    abaFaturamento.style.display = 'block';
-    btnMovimentacao.classList.remove('active');
-    btnFaturamento.classList.add('active');
-  }
-}
-
-/**
  * Atualiza campos de data conforme período selecionado
  */
 function atualizarDatasFaturamento() {
