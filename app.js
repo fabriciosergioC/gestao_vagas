@@ -95,7 +95,10 @@ function formatarPlaca(placa) {
 }
 
 function formatarMoeda(valor) {
-  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  if (valor === undefined || valor === null) {
+    return 'R$ 0,00';
+  }
+  return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 function formatarData(dataISO) {
@@ -198,7 +201,10 @@ function renderVagas() {
   const container = document.getElementById('vagasContainer');
   const vagaSelecionada = document.getElementById('veiculoVaga')?.value;
 
-  if (!container) return;
+  if (!container) {
+    console.error('❌ Container de vagas não encontrado!');
+    return;
+  }
 
   container.innerHTML = '';
   const vagas = gerarVagas();
@@ -594,11 +600,26 @@ function showSection(sectionId) {
 }
 
 function renderAll() {
+  console.log('🔄 renderAll() chamado');
   renderPatio();
   renderHistorico();
   renderVagas();
+  console.log('✅ renderAll() concluído');
 }
 
 // ==================== INICIALIZAR ====================
 
-document.addEventListener('DOMContentLoaded', inicializarSistema);
+document.addEventListener('DOMContentLoaded', async () => {
+  console.log('📄 DOM carregado, inicializando sistema...');
+  
+  // Forçar renderização das vagas mesmo se houver erro na autenticação
+  setTimeout(() => {
+    const container = document.getElementById('vagasContainer');
+    if (container && container.children.length === 0) {
+      console.log('⚠️ Vagas não renderizadas, forçando renderização...');
+      renderVagas();
+    }
+  }, 1000);
+  
+  await inicializarSistema();
+});
