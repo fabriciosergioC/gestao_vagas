@@ -10,6 +10,40 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
   <script src="app.js" defer></script>
+  <script>
+    // Funções globais para os relatórios
+    function mostrarAbaRelatorio(aba) {
+      const abaMovimentacao = document.getElementById('abaMovimentacao');
+      const abaFaturamento = document.getElementById('abaFaturamento');
+      const abaOcupacao = document.getElementById('abaOcupacao');
+      const btnMovimentacao = document.getElementById('btnMovimentacao');
+      const btnFaturamento = document.getElementById('btnFaturamento');
+      const btnOcupacao = document.getElementById('btnOcupacao');
+
+      if (aba === 'movimentacao') {
+        abaMovimentacao.style.display = 'block';
+        abaFaturamento.style.display = 'none';
+        abaOcupacao.style.display = 'none';
+        btnMovimentacao.classList.add('active');
+        btnFaturamento.classList.remove('active');
+        btnOcupacao.classList.remove('active');
+      } else if (aba === 'faturamento') {
+        abaMovimentacao.style.display = 'none';
+        abaFaturamento.style.display = 'block';
+        abaOcupacao.style.display = 'none';
+        btnMovimentacao.classList.remove('active');
+        btnFaturamento.classList.add('active');
+        btnOcupacao.classList.remove('active');
+      } else if (aba === 'ocupacao') {
+        abaMovimentacao.style.display = 'none';
+        abaFaturamento.style.display = 'none';
+        abaOcupacao.style.display = 'block';
+        btnMovimentacao.classList.remove('active');
+        btnFaturamento.classList.remove('active');
+        btnOcupacao.classList.add('active');
+      }
+    }
+  </script>
 </head>
 <body>
 
