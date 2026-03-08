@@ -759,6 +759,279 @@ function exportarRelatorio() {
   document.body.removeChild(link);
 }
 
+// ==================== RELATÓRIO DE FATURAMENTO ====================
+
+/**
+ * Mostra aba selecionada do relatório
+ */
+function mostrarAbaRelatorio(aba) {
+  const abaMovimentacao = document.getElementById('abaMovimentacao');
+  const abaFaturamento = document.getElementById('abaFaturamento');
+  const btnMovimentacao = document.getElementById('btnMovimentacao');
+  const btnFaturamento = document.getElementById('btnFaturamento');
+
+  if (aba === 'movimentacao') {
+    abaMovimentacao.style.display = 'block';
+    abaFaturamento.style.display = 'none';
+    btnMovimentacao.classList.add('active');
+    btnFaturamento.classList.remove('active');
+  } else {
+    abaMovimentacao.style.display = 'none';
+    abaFaturamento.style.display = 'block';
+    btnMovimentacao.classList.remove('active');
+    btnFaturamento.classList.add('active');
+  }
+}
+
+/**
+ * Atualiza campos de data conforme período selecionado
+ */
+function atualizarDatasFaturamento() {
+  const periodo = document.getElementById('faturamentoPeriodo').value;
+  const divInicio = document.getElementById('divDataInicioPersonalizado');
+  const divFim = document.getElementById('divDataFimPersonalizado');
+
+  if (periodo === 'personalizado') {
+    divInicio.style.display = 'block';
+    divFim.style.display = 'block';
+  } else {
+    divInicio.style.display = 'none';
+    divFim.style.display = 'none';
+  }
+}
+
+/**
+ * Gera relatório de faturamento
+ */
+function gerarRelatorioFaturamento() {
+  const periodo = document.getElementById('faturamentoPeriodo').value;
+  let inicio, fim;
+
+  const agora = new Date();
+  const hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+
+  switch(periodo) {
+    case 'hoje':
+      inicio = hoje;
+      fim = new Date(hoje);
+      fim.setHours(23, 59, 59);
+      break;
+    case 'ontem':
+      inicio = new Date(hoje);
+      inicio.setDate(inicio.getDate() - 1);
+      fim = new Date(hoje);
+      fim.setMilliseconds(-1);
+      break;
+    case 'semana':
+      const diaSemana = agora.getDay();
+      const diffSegunda = agora.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1);
+      inicio = new Date(agora);
+      inicio.setDate(diffSegunda);
+      inicio.setHours(0, 0, 0);
+      fim = new Date(agora);
+      fim.setHours(23, 59, 59);
+      break;
+    case 'mes':
+      inicio = new Date(agora.getFullYear(), agora.getMonth(), 1);
+      fim = new Date(agora);
+      fim.setHours(23, 59, 59);
+      break;
+    case 'personalizado':
+      const dataInicio = document.getElementById('fatDataInicio')?.value;
+      const dataFim = document.getElementById('fatDataFim')?.value;
+      
+      if (!dataInicio || !dataFim) {
+        alert('Selecione as datas do período personalizado!');
+        return;
+      }
+      
+      inicio = new Date(dataInicio);
+      inicio.setHours(0, 0, 0);
+      fim = new Date(dataFim);
+      fim.setHours(23, 59, 59);
+      break;
+  }
+
+  // Filtrar histórico
+  const filtrados = historico.filter(h => {
+    const dataSaida = new Date(h.saida);
+    return dataSaida >= inicio && dataSaida <= fim;
+  });
+
+  if (filtrados.length === 0) {
+    alert('Nenhum veículo no período selecionado!');
+    document.getElementById('resumoFaturamento').style.display = 'none';
+    document.getElementById('graficoPagamento').innerHTML = '';
+    document.getElementById('tabelaFaturamentoDiario').querySelector('tbody').innerHTML = 
+      '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #95a5a6;">Nenhum veículo no período</td></tr>';
+    return;
+  }
+
+  // Calcular totais
+  const totalVeiculos = filtrados.length;
+  const totalPeriodo = filtrados.reduce((acc, h) => acc + (h.valorCobrado || 0), 0);
+  const valorMedioVeiculo = totalPeriodo / totalVeiculos;
+
+  // Calcular total do dia (hoje)
+  const filtradosHoje = filtrados.filter(h => {
+    const dataSaida = new Date(h.saida);
+    return dataSaida >= hoje;
+  });
+  const totalDia = filtradosHoje.reduce((acc, h) => acc + (h.valorCobrado || 0), 0);
+
+  // Calcular por forma de pagamento
+  const porPagamento = {
+    dinheiro: { total: 0, count: 0 },
+    pix: { total: 0, count: 0 },
+    cartao: { total: 0, count: 0 }
+  };
+
+  filtrados.forEach(h => {
+    const forma = h.formaPagamento?.toLowerCase() || 'dinheiro';
+    if (porPagamento[forma]) {
+      porPagamento[forma].total += h.valorCobrado || 0;
+      porPagamento[forma].count++;
+    }
+  });
+
+  // Exibir resumo
+  document.getElementById('fatTotalDia').innerText = formatarMoeda(totalDia);
+  document.getElementById('fatTotalPeriodo').innerText = formatarMoeda(totalPeriodo);
+  document.getElementById('fatValorMedioVeiculo').innerText = formatarMoeda(valorMedioVeiculo);
+  document.getElementById('fatTotalVeiculos').innerText = totalVeiculos;
+  document.getElementById('resumoFaturamento').style.display = 'grid';
+
+  // Exibir gráfico de pagamento
+  const graficoHtml = `
+    <div class="stat-card" style="background: linear-gradient(135deg, #27ae60, #2ecc71);">
+      <div class="stat-value" style="color: #fff;">💵 ${formatarMoeda(porPagamento.dinheiro.total)}</div>
+      <div class="stat-label" style="color: #fff;">Dinheiro (${porPagamento.dinheiro.count})</div>
+    </div>
+    <div class="stat-card" style="background: linear-gradient(135deg, #8e44ad, #9b59b6);">
+      <div class="stat-value" style="color: #fff;">📱 ${formatarMoeda(porPagamento.pix.total)}</div>
+      <div class="stat-label" style="color: #fff;">Pix (${porPagamento.pix.count})</div>
+    </div>
+    <div class="stat-card" style="background: linear-gradient(135deg, #2980b9, #3498db);">
+      <div class="stat-value" style="color: #fff;">💳 ${formatarMoeda(porPagamento.cartao.total)}</div>
+      <div class="stat-label" style="color: #fff;">Cartão (${porPagamento.cartao.count})</div>
+    </div>
+  `;
+  document.getElementById('graficoPagamento').innerHTML = graficoHtml;
+
+  // Agrupar por dia
+  const porDia = {};
+  filtrados.forEach(h => {
+    const dataSaida = new Date(h.saida);
+    const dataStr = dataSaida.toLocaleDateString('pt-BR');
+    
+    if (!porDia[dataStr]) {
+      porDia[dataStr] = {
+        veiculos: 0,
+        dinheiro: 0,
+        pix: 0,
+        cartao: 0,
+        total: 0
+      };
+    }
+    
+    porDia[dataStr].veiculos++;
+    const forma = h.formaPagamento?.toLowerCase() || 'dinheiro';
+    if (porDia[dataStr][forma] !== undefined) {
+      porDia[dataStr][forma] += h.valorCobrado || 0;
+    }
+    porDia[dataStr].total += h.valorCobrado || 0;
+  });
+
+  // Preencher tabela de faturamento por dia
+  const tbody = document.getElementById('tabelaFaturamentoDiario').querySelector('tbody');
+  tbody.innerHTML = '';
+  
+  Object.entries(porDia).sort((a, b) => {
+    const [diaA, mesA, anoA] = a[0].split('/').map(Number);
+    const [diaB, mesB, anoB] = b[0].split('/').map(Number);
+    return new Date(anoB, mesB-1, diaB) - new Date(anoA, mesA-1, diaA);
+  }).forEach(([data, dados]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${data}</strong></td>
+      <td>${dados.veiculos}</td>
+      <td style="color: #27ae60;">${formatarMoeda(dados.dinheiro)}</td>
+      <td style="color: #8e44ad;">${formatarMoeda(dados.pix)}</td>
+      <td style="color: #2980b9;">${formatarMoeda(dados.cartao)}</td>
+      <td style="color: #f39c12; font-weight: 600;">${formatarMoeda(dados.total)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/**
+ * Imprime relatório de faturamento
+ */
+function imprimirRelatorioFaturamento() {
+  const resumo = document.getElementById('resumoFaturamento');
+  if (resumo.style.display === 'none') {
+    alert('Gere o relatório primeiro!');
+    return;
+  }
+  window.print();
+}
+
+/**
+ * Exporta relatório de faturamento para Excel (CSV)
+ */
+function exportarRelatorioFaturamento() {
+  const resumo = document.getElementById('resumoFaturamento');
+  if (resumo.style.display === 'none') {
+    alert('Gere o relatório primeiro!');
+    return;
+  }
+
+  const periodo = document.getElementById('faturamentoPeriodo').value;
+  
+  // Criar CSV
+  let csv = 'RELATÓRIO DE FATURAMENTO\n\n';
+  csv += `Período: ${periodo}\n`;
+  csv += `Gerado em: ${new Date().toLocaleString('pt-BR')}\n\n`;
+  
+  csv += 'RESUMO\n';
+  csv += `Total do Dia;${document.getElementById('fatTotalDia').innerText}\n`;
+  csv += `Total do Período;${document.getElementById('fatTotalPeriodo').innerText}\n`;
+  csv += `Valor Médio por Veículo;${document.getElementById('fatValorMedioVeiculo').innerText}\n`;
+  csv += `Veículos Atendidos;${document.getElementById('fatTotalVeiculos').innerText}\n\n`;
+  
+  csv += 'FORMA DE PAGAMENTO\n';
+  const filtrados = historico.filter(h => {
+    const dataSaida = new Date(h.saida);
+    return dataSaida >= new Date(document.getElementById('fatDataInicio')?.value || 0) && 
+           dataSaida <= new Date(document.getElementById('fatDataFim')?.value || Date.now());
+  });
+  
+  const porPagamento = { dinheiro: 0, pix: 0, cartao: 0 };
+  filtrados.forEach(h => {
+    const forma = h.formaPagamento?.toLowerCase() || 'dinheiro';
+    if (porPagamento[forma] !== undefined) {
+      porPagamento[forma] += h.valorCobrado || 0;
+    }
+  });
+  
+  csv += `Dinheiro;${formatarMoeda(porPagamento.dinheiro)}\n`;
+  csv += `Pix;${formatarMoeda(porPagamento.pix)}\n`;
+  csv += `Cartão;${formatarMoeda(porPagamento.cartao)}\n`;
+
+  // Criar blob e download
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', `relatorio_faturamento_${periodo}_${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 // ==================== INICIALIZAR ====================
 
 document.addEventListener('DOMContentLoaded', async () => {

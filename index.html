@@ -240,72 +240,171 @@
 
   <!-- Seção: Relatórios -->
   <div id="relatorios" class="section">
-    <h1>📈 Relatório de Movimentação</h1>
+    <h1>📈 Relatórios</h1>
 
-    <div class="form-group">
-      <h3 style="margin-bottom: 15px;">📊 Relatório de Movimentação de Veículos</h3>
-      
-      <div class="form-row" style="margin-bottom: 20px;">
-        <div>
-          <label style="display: block; margin-bottom: 5px; color: #fff;">Data Início:</label>
-          <input type="date" id="relatorioDataInicio" style="padding: 10px; border-radius: 5px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.95);">
+    <!-- Menu de Abas dos Relatórios -->
+    <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+      <button class="menu-btn active" onclick="mostrarAbaRelatorio('movimentacao')" id="btnMovimentacao" style="flex: 1; padding: 12px;">📊 Movimentação</button>
+      <button class="menu-btn" onclick="mostrarAbaRelatorio('faturamento')" id="btnFaturamento" style="flex: 1; padding: 12px;">💰 Faturamento</button>
+    </div>
+
+    <!-- Aba: Relatório de Movimentação -->
+    <div id="abaMovimentacao">
+      <div class="form-group">
+        <h3 style="margin-bottom: 15px;">📊 Relatório de Movimentação de Veículos</h3>
+        
+        <div class="form-row" style="margin-bottom: 20px;">
+          <div>
+            <label style="display: block; margin-bottom: 5px; color: #fff;">Data Início:</label>
+            <input type="date" id="relatorioDataInicio" style="padding: 10px; border-radius: 5px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.95);">
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 5px; color: #fff;">Data Fim:</label>
+            <input type="date" id="relatorioDataFim" style="padding: 10px; border-radius: 5px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.95);">
+          </div>
+          <div style="display: flex; align-items: flex-end;">
+            <button class="btn-primary" onclick="gerarRelatorio()" style="flex: 1;">🔍 Gerar Relatório</button>
+          </div>
         </div>
-        <div>
-          <label style="display: block; margin-bottom: 5px; color: #fff;">Data Fim:</label>
-          <input type="date" id="relatorioDataFim" style="padding: 10px; border-radius: 5px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.95);">
-        </div>
-        <div style="display: flex; align-items: flex-end;">
-          <button class="btn-primary" onclick="gerarRelatorio()" style="flex: 1;">🔍 Gerar Relatório</button>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+          <button class="btn-primary" onclick="imprimirRelatorio()" style="flex: 1;">🖨️ Imprimir Relatório</button>
+          <button class="btn-primary" onclick="exportarRelatorio()" style="flex: 1;">📥 Exportar Excel</button>
         </div>
       </div>
 
-      <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-        <button class="btn-primary" onclick="imprimirRelatorio()" style="flex: 1;">🖨️ Imprimir Relatório</button>
-        <button class="btn-primary" onclick="exportarRelatorio()" style="flex: 1;">📥 Exportar Excel</button>
+      <!-- Cards de Resumo -->
+      <div class="stats-grid" id="resumoRelatorio" style="display: none;">
+        <div class="stat-card">
+          <div class="stat-value" id="statTotalVeiculosRelatorio" style="color: #3498db;">0</div>
+          <div class="stat-label">Total de Veículos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statFaturamentoRelatorio" style="color: #27ae60;">R$ 0,00</div>
+          <div class="stat-label">Faturamento Total</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statTicketMedioRelatorio" style="color: #e74c3c;">R$ 0,00</div>
+          <div class="stat-label">Ticket Médio</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statPermanenciaMediaRelatorio" style="color: #f39c12;">0h</div>
+          <div class="stat-label">Permanência Média</div>
+        </div>
+      </div>
+
+      <!-- Tabela do Relatório -->
+      <div style="overflow-x: auto;">
+        <table id="tabelaRelatorio">
+          <thead>
+            <tr>
+              <th>Placa</th>
+              <th>Veículo</th>
+              <th>Tipo</th>
+              <th>Entrada</th>
+              <th>Saída</th>
+              <th>Permanência</th>
+              <th>Valor</th>
+              <th>Pagamento</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="8" style="text-align: center; padding: 40px; color: #95a5a6;">Selecione as datas e clique em "Gerar Relatório"</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
-    <!-- Cards de Resumo -->
-    <div class="stats-grid" id="resumoRelatorio" style="display: none;">
-      <div class="stat-card">
-        <div class="stat-value" id="statTotalVeiculosRelatorio" style="color: #3498db;">0</div>
-        <div class="stat-label">Total de Veículos</div>
+    <!-- Aba: Relatório de Faturamento -->
+    <div id="abaFaturamento" style="display: none;">
+      <div class="form-group">
+        <h3 style="margin-bottom: 15px;">💰 Relatório de Faturamento</h3>
+        
+        <!-- Filtro de Período -->
+        <div class="form-row" style="margin-bottom: 20px;">
+          <div>
+            <label style="display: block; margin-bottom: 5px; color: #fff;">Período:</label>
+            <select id="faturamentoPeriodo" onchange="atualizarDatasFaturamento()" style="padding: 10px; border-radius: 5px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.95); width: 100%;">
+              <option value="hoje">Hoje</option>
+              <option value="ontem">Ontem</option>
+              <option value="semana">Esta Semana</option>
+              <option value="mes">Este Mês</option>
+              <option value="personalizado">Período Personalizado</option>
+            </select>
+          </div>
+          <div id="divDataInicioPersonalizado" style="display: none;">
+            <label style="display: block; margin-bottom: 5px; color: #fff;">Data Início:</label>
+            <input type="date" id="fatDataInicio" style="padding: 10px; border-radius: 5px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.95); width: 100%;">
+          </div>
+          <div id="divDataFimPersonalizado" style="display: none;">
+            <label style="display: block; margin-bottom: 5px; color: #fff;">Data Fim:</label>
+            <input type="date" id="fatDataFim" style="padding: 10px; border-radius: 5px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.95); width: 100%;">
+          </div>
+          <div style="display: flex; align-items: flex-end;">
+            <button class="btn-primary" onclick="gerarRelatorioFaturamento()" style="flex: 1;">🔍 Gerar Relatório</button>
+          </div>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-value" id="statFaturamentoRelatorio" style="color: #27ae60;">R$ 0,00</div>
-        <div class="stat-label">Faturamento Total</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="statTicketMedioRelatorio" style="color: #e74c3c;">R$ 0,00</div>
-        <div class="stat-label">Ticket Médio</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="statPermanenciaMediaRelatorio" style="color: #f39c12;">0h</div>
-        <div class="stat-label">Permanência Média</div>
-      </div>
-    </div>
 
-    <!-- Tabela do Relatório -->
-    <div style="overflow-x: auto;">
-      <table id="tabelaRelatorio">
-        <thead>
-          <tr>
-            <th>Placa</th>
-            <th>Veículo</th>
-            <th>Tipo</th>
-            <th>Entrada</th>
-            <th>Saída</th>
-            <th>Permanência</th>
-            <th>Valor</th>
-            <th>Pagamento</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td colspan="8" style="text-align: center; padding: 40px; color: #95a5a6;">Selecione as datas e clique em "Gerar Relatório"</td>
-          </tr>
-        </tbody>
-      </table>
+      <!-- Cards de Resumo de Faturamento -->
+      <div class="stats-grid" id="resumoFaturamento" style="display: none;">
+        <div class="stat-card">
+          <div class="stat-value" id="fatTotalDia" style="color: #27ae60;">R$ 0,00</div>
+          <div class="stat-label">Total do Dia</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="fatTotalPeriodo" style="color: #3498db;">R$ 0,00</div>
+          <div class="stat-label">Total do Período</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="fatValorMedioVeiculo" style="color: #e74c3c;">R$ 0,00</div>
+          <div class="stat-label">Valor por Veículo</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="fatTotalVeiculos" style="color: #f39c12;">0</div>
+          <div class="stat-label">Veículos Atendidos</div>
+        </div>
+      </div>
+
+      <!-- Gráfico de Forma de Pagamento -->
+      <div class="form-group" style="margin-top: 20px;">
+        <h3 style="margin-bottom: 15px;">📊 Forma de Pagamento</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;" id="graficoPagamento">
+          <!-- Cards de pagamento serão inseridos aqui -->
+        </div>
+      </div>
+
+      <!-- Tabela de Faturamento por Dia -->
+      <div class="form-group" style="margin-top: 20px;">
+        <h3 style="margin-bottom: 15px;">📅 Faturamento por Dia</h3>
+        <div style="overflow-x: auto;">
+          <table id="tabelaFaturamentoDiario">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Veículos</th>
+                <th>Dinheiro</th>
+                <th>Pix</th>
+                <th>Cartão</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: #95a5a6;">Gere o relatório para ver o faturamento por dia</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Botões de Ação -->
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button class="btn-primary" onclick="imprimirRelatorioFaturamento()" style="flex: 1;">🖨️ Imprimir Relatório</button>
+        <button class="btn-primary" onclick="exportarRelatorioFaturamento()" style="flex: 1;">📥 Exportar Excel</button>
+      </div>
     </div>
   </div>
 
