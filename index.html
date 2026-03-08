@@ -246,6 +246,7 @@
     <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
       <button class="menu-btn active" onclick="mostrarAbaRelatorio('movimentacao')" id="btnMovimentacao" style="flex: 1; padding: 12px;">📊 Movimentação</button>
       <button class="menu-btn" onclick="mostrarAbaRelatorio('faturamento')" id="btnFaturamento" style="flex: 1; padding: 12px;">💰 Faturamento</button>
+      <button class="menu-btn" onclick="mostrarAbaRelatorio('ocupacao')" id="btnOcupacao" style="flex: 1; padding: 12px;">🅿️ Ocupação</button>
     </div>
 
     <!-- Aba: Relatório de Movimentação -->
@@ -404,6 +405,101 @@
       <div style="display: flex; gap: 10px; margin-top: 20px;">
         <button class="btn-primary" onclick="imprimirRelatorioFaturamento()" style="flex: 1;">🖨️ Imprimir Relatório</button>
         <button class="btn-primary" onclick="exportarRelatorioFaturamento()" style="flex: 1;">📥 Exportar Excel</button>
+      </div>
+    </div>
+
+    <!-- Aba: Relatório de Ocupação -->
+    <div id="abaOcupacao" style="display: none;">
+      <div class="form-group">
+        <h3 style="margin-bottom: 15px;">🅿️ Relatório de Ocupação de Vagas</h3>
+        
+        <!-- Botão Gerar -->
+        <div style="margin-bottom: 20px;">
+          <button class="btn-primary" onclick="gerarRelatorioOcupacao()" style="width: 100%;">🔍 Gerar Relatório</button>
+        </div>
+      </div>
+
+      <!-- Cards de Resumo Geral -->
+      <div class="stats-grid" id="resumoOcupacaoGeral" style="display: none;">
+        <div class="stat-card">
+          <div class="stat-value" id="ocupTotalVagas" style="color: #3498db;">0</div>
+          <div class="stat-label">Total de Vagas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="ocupOcupadas" style="color: #e74c3c;">0</div>
+          <div class="stat-label">Vagas Ocupadas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="ocupLivres" style="color: #27ae60;">0</div>
+          <div class="stat-label">Vagas Livres</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="ocupOcupacaoPorcento" style="color: #f39c12;">0%</div>
+          <div class="stat-label">Taxa de Ocupação</div>
+        </div>
+      </div>
+
+      <!-- Relatório por Categoria -->
+      <div class="form-group" style="margin-top: 20px;">
+        <h3 style="margin-bottom: 15px;">📊 Por Categoria de Veículo</h3>
+        <div id="relatorioPorCategoria">
+          <!-- Cards serão inseridos aqui -->
+        </div>
+      </div>
+
+      <!-- Tabela de Vagas -->
+      <div class="form-group" style="margin-top: 20px;">
+        <h3 style="margin-bottom: 15px;">🅿️ Status das Vagas</h3>
+        <div style="overflow-x: auto;">
+          <table id="tabelaVagasOcupacao">
+            <thead>
+              <tr>
+                <th>Vaga</th>
+                <th>Status</th>
+                <th>Veículo</th>
+                <th>Placa</th>
+                <th>Entrada</th>
+                <th>Permanência</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: #95a5a6;">Clique em "Gerar Relatório" para ver o status das vagas</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Gráfico de Ocupação -->
+      <div class="form-group" style="margin-top: 20px;">
+        <h3 style="margin-bottom: 15px;">📊 Visualização de Ocupação</h3>
+        <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 200px;">
+            <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 20px; text-align: center;">
+              <div style="font-size: 48px; font-weight: bold; color: #3498db;" id="graficoOcupadas">0</div>
+              <div style="color: #95a5a6; font-size: 14px;">Ocupadas</div>
+            </div>
+          </div>
+          <div style="flex: 1; min-width: 200px;">
+            <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 20px; text-align: center;">
+              <div style="font-size: 48px; font-weight: bold; color: #27ae60;" id="graficoLivres">0</div>
+              <div style="color: #95a5a6; font-size: 14px;">Livres</div>
+            </div>
+          </div>
+          <div style="flex: 1; min-width: 200px;">
+            <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 20px; text-align: center;">
+              <div style="font-size: 48px; font-weight: bold; color: #f39c12;" id="graficoPorcento">0%</div>
+              <div style="color: #95a5a6; font-size: 14px;">Ocupação</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botões de Ação -->
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button class="btn-primary" onclick="imprimirRelatorioOcupacao()" style="flex: 1;">🖨️ Imprimir Relatório</button>
+        <button class="btn-primary" onclick="exportarRelatorioOcupacao()" style="flex: 1;">📥 Exportar Excel</button>
       </div>
     </div>
   </div>

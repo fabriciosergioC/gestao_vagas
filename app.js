@@ -1032,6 +1032,215 @@ function exportarRelatorioFaturamento() {
   document.body.removeChild(link);
 }
 
+// ==================== RELATÓRIO DE OCUPAÇÃO ====================
+
+/**
+ * Gera relatório de ocupação de vagas
+ */
+function gerarRelatorioOcupacao() {
+  const totalVagas = TOTAL_VAGAS;
+  const ocupadas = veiculosNoPatio.length;
+  const livres = totalVagas - ocupadas;
+  const porcentagemOcupacao = totalVagas > 0 ? (ocupadas / totalVagas) * 100 : 0;
+
+  // Exibir resumo geral
+  document.getElementById('ocupTotalVagas').innerText = totalVagas;
+  document.getElementById('ocupOcupadas').innerText = ocupadas;
+  document.getElementById('ocupLivres').innerText = livres;
+  document.getElementById('ocupOcupacaoPorcento').innerText = porcentagemOcupacao.toFixed(1) + '%';
+  document.getElementById('resumoOcupacaoGeral').style.display = 'grid';
+
+  // Relatório por categoria
+  const porCategoria = {
+    carro: { ocupadas: 0, valorHora: VALOR_HORA_CARRO, totalArrecadado: 0 },
+    moto: { ocupadas: 0, valorHora: VALOR_HORA_MOTO, totalArrecadado: 0 },
+    caminhao: { ocupadas: 0, valorHora: VALOR_HORA_CAMINHAO, totalArrecadado: 0 }
+  };
+
+  const iconesCategoria = {
+    carro: '🚗',
+    moto: '🏍️',
+    caminhao: '🚚'
+  };
+
+  const nomesCategoria = {
+    carro: 'Carros',
+    moto: 'Motos',
+    caminhao: 'Caminhões'
+  };
+
+  // Calcular por categoria
+  veiculosNoPatio.forEach(v => {
+    if (porCategoria[v.tipo]) {
+      porCategoria[v.tipo].ocupadas++;
+      
+      // Calcular valor arrecadado (estimativa baseada no tempo)
+      const entrada = new Date(v.entrada);
+      const agora = new Date();
+      const horas = Math.ceil((agora - entrada) / (1000 * 60 * 60));
+      const valorArrecadado = horas * porCategoria[v.tipo].valorHora;
+      porCategoria[v.tipo].totalArrecadado += valorArrecadado;
+    }
+  });
+
+  // Gerar cards por categoria
+  let htmlCategoria = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">';
+  
+  Object.entries(porCategoria).forEach(([tipo, dados]) => {
+    const livresCategoria = dados.ocupadas > 0 ? Math.max(0, Math.floor(totalVagas / 3) - dados.ocupadas) : Math.floor(totalVagas / 3);
+    htmlCategoria += `
+      <div class="stat-card" style="background: linear-gradient(135deg, ${tipo === 'carro' ? '#3498db' : tipo === 'moto' ? '#27ae60' : '#e67e22'}, ${tipo === 'carro' ? '#2980b9' : tipo === 'moto' ? '#229954' : '#d35400'});">
+        <div class="stat-value" style="color: #fff; font-size: 36px;">
+          ${iconesCategoria[tipo]} ${dados.ocupadas}
+        </div>
+        <div class="stat-label" style="color: #fff; font-size: 14px;">
+          ${nomesCategoria[tipo]}
+        </div>
+        <div style="color: #fff; font-size: 12px; margin-top: 5px;">
+          Valor/hora: ${formatarMoeda(dados.valorHora)}<br>
+          Arrecadado: ${formatarMoeda(dados.totalArrecadado)}
+        </div>
+      </div>
+    `;
+  });
+  
+  htmlCategoria += '</div>';
+  document.getElementById('relatorioPorCategoria').innerHTML = htmlCategoria;
+
+  // Preencher tabela de vagas
+  const tbody = document.getElementById('tabelaVagasOcupacao').querySelector('tbody');
+  tbody.innerHTML = '';
+
+  const vagas = gerarVagas();
+  
+  if (vagas.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #95a5a6;">Nenhuma vaga configurada</td></tr>';
+  } else {
+    vagas.forEach(vaga => {
+      const tr = document.createElement('tr');
+      const statusClass = vaga.ocupada ? 'ocupada' : 'livre';
+      const statusIcon = vaga.ocupada ? '🔴' : '🟢';
+      const statusTexto = vaga.ocupada ? 'Ocupada' : 'Livre';
+      
+      if (vaga.ocupada) {
+        const tempo = calcularTempoPermanencia(vaga.veiculo.entrada);
+        const marcaModelo = vaga.veiculo.marca ? `${vaga.veiculo.marca} ${vaga.veiculo.modelo}` : vaga.veiculo.modelo;
+        
+        tr.innerHTML = `
+          <td><strong style="color: #3498db; font-size: 18px;">${vaga.numero}</strong></td>
+          <td><span style="color: #e74c3c;">${statusIcon} ${statusTexto}</span></td>
+          <td>${marcaModelo}</td>
+          <td><strong>${vaga.veiculo.placa}</strong></td>
+          <td>${formatarData(vaga.veiculo.entrada)}</td>
+          <td>${tempo}</td>
+        `;
+      } else {
+        tr.innerHTML = `
+          <td><strong style="color: #27ae60; font-size: 18px;">${vaga.numero}</strong></td>
+          <td><span style="color: #27ae60;">${statusIcon} ${statusTexto}</span></td>
+          <td style="color: #95a5a6;">-</td>
+          <td style="color: #95a5a6;">-</td>
+          <td style="color: #95a5a6;">-</td>
+          <td style="color: #95a5a6;">-</td>
+        `;
+      }
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Atualizar gráfico visual
+  document.getElementById('graficoOcupadas').innerText = ocupadas;
+  document.getElementById('graficoLivres').innerText = livres;
+  document.getElementById('graficoPorcento').innerText = porcentagemOcupacao.toFixed(1) + '%';
+}
+
+/**
+ * Imprime relatório de ocupação
+ */
+function imprimirRelatorioOcupacao() {
+  const resumo = document.getElementById('resumoOcupacaoGeral');
+  if (resumo.style.display === 'none') {
+    alert('Gere o relatório primeiro!');
+    return;
+  }
+  window.print();
+}
+
+/**
+ * Exporta relatório de ocupação para Excel (CSV)
+ */
+function exportarRelatorioOcupacao() {
+  const resumo = document.getElementById('resumoOcupacaoGeral');
+  if (resumo.style.display === 'none') {
+    alert('Gere o relatório primeiro!');
+    return;
+  }
+
+  const totalVagas = TOTAL_VAGAS;
+  const ocupadas = veiculosNoPatio.length;
+  const livres = totalVagas - ocupadas;
+
+  // Criar CSV
+  let csv = 'RELATÓRIO DE OCUPAÇÃO DE VAGAS\n\n';
+  csv += `Gerado em: ${new Date().toLocaleString('pt-BR')}\n\n`;
+  
+  csv += 'RESUMO GERAL\n';
+  csv += `Total de Vagas;${totalVagas}\n`;
+  csv += `Vagas Ocupadas;${ocupadas}\n`;
+  csv += `Vagas Livres;${livres}\n`;
+  csv += `Taxa de Ocupação;${((ocupadas / totalVagas) * 100).toFixed(1)}%\n\n`;
+  
+  csv += 'POR CATEGORIA\n';
+  csv += 'Categoria;Ocupadas;Valor Hora;Total Arrecadado\n';
+  
+  const categorias = [
+    { tipo: 'carro', nome: 'Carros', valor: VALOR_HORA_CARRO },
+    { tipo: 'moto', nome: 'Motos', valor: VALOR_HORA_MOTO },
+    { tipo: 'caminhao', nome: 'Caminhões', valor: VALOR_HORA_CAMINHAO }
+  ];
+  
+  categorias.forEach(cat => {
+    const ocupadasCat = veiculosNoPatio.filter(v => v.tipo === cat.tipo).length;
+    let arrecadado = 0;
+    
+    veiculosNoPatio.filter(v => v.tipo === cat.tipo).forEach(v => {
+      const entrada = new Date(v.entrada);
+      const agora = new Date();
+      const horas = Math.ceil((agora - entrada) / (1000 * 60 * 60));
+      arrecadado += horas * cat.valor;
+    });
+    
+    csv += `${cat.nome};${ocupadasCat};${formatarMoeda(cat.valor)};${formatarMoeda(arrecadado)}\n`;
+  });
+  
+  csv += '\nSTATUS DAS VAGAS\n';
+  csv += 'Vaga;Status;Veículo;Placa;Entrada;Permanência\n';
+  
+  gerarVagas().forEach(vaga => {
+    if (vaga.ocupada) {
+      const marcaModelo = vaga.veiculo.marca ? `${vaga.veiculo.marca} ${vaga.veiculo.modelo}` : vaga.veiculo.modelo;
+      const tempo = calcularTempoPermanencia(vaga.veiculo.entrada);
+      const entrada = formatarData(vaga.veiculo.entrada).replace(',', '.');
+      csv += `${vaga.numero};Ocupada;${marcaModelo};${vaga.veiculo.placa};${entrada};${tempo}\n`;
+    } else {
+      csv += `${vaga.numero};Livre;-;-;-\n`;
+    }
+  });
+
+  // Criar blob e download
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', `relatorio_ocupacao_${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 // ==================== INICIALIZAR ====================
 
 document.addEventListener('DOMContentLoaded', async () => {
