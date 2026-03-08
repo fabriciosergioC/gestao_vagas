@@ -455,7 +455,14 @@ async function syncFromSupabase() {
 
     const historico = await fetchHistorico();
     if (historico !== null) {
-      localStorage.setItem('historico', JSON.stringify(historico));
+      // Mapear campos do banco para o formato JavaScript
+      const historicoFormatado = historico.map(h => ({
+        ...h,
+        valorCobrado: h.valor_cobrado || 0,
+        formaPagamento: h.forma_pagamento || 'dinheiro',
+        tempoPermanencia: h.tempo_permanencia || null
+      }));
+      localStorage.setItem('historico', JSON.stringify(historicoFormatado));
     }
 
     const usuarios = await fetchUsuarios();

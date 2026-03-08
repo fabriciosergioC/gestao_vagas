@@ -73,7 +73,15 @@ async function inicializarSistema() {
 
 function carregarDadosLocais() {
   veiculosNoPatio = JSON.parse(localStorage.getItem("veiculosNoPatio")) || [];
+  
+  // Carregar histórico e normalizar campos
   historico = JSON.parse(localStorage.getItem("historico")) || [];
+  historico = historico.map(h => ({
+    ...h,
+    valorCobrado: h.valorCobrado !== undefined ? h.valorCobrado : (h.valor_cobrado || 0),
+    formaPagamento: h.formaPagamento !== undefined ? h.formaPagamento : (h.forma_pagamento || 'dinheiro'),
+    tempoPermanencia: h.tempoPermanencia !== undefined ? h.tempoPermanencia : (h.tempo_permanencia || null)
+  }));
 }
 
 // ==================== LOGOUT ====================
