@@ -1,161 +1,27 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sistema de Controle de Estacionamento</title>
-<link rel="stylesheet" href="style.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js"></script>
-<script src="script.js" defer></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema - Controle de Estacionamento</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="app.js" defer></script>
 </head>
 <body>
 
-<!-- Tela de Seleção de Cliente -->
-<div id="clienteScreen" class="login-screen" style="display: none;">
-  <div class="login-container">
-    <div class="login-box">
-      <div class="login-header">
-        <h1>🏢 Selecione o Cliente</h1>
-        <p>Escolha o estacionamento para acessar</p>
-      </div>
-
-      <div id="listaClientes" style="margin-bottom: 20px;">
-        <p style="color: #fff; text-align: center;">Carregando clientes...</p>
-      </div>
-
-      <div style="display: flex; gap: 10px; justify-content: center;">
-        <button class="btn-login" onclick="mostrarLogin()" style="flex: 1;">🔓 Login Direto</button>
-        <button class="btn-login" onclick="mostrarCadastroCliente()" style="flex: 1;">➕ Novo Cliente</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal de Cadastro de Cliente -->
-<div id="modalCadastroCliente" class="modal-overlay" style="display: none;">
-  <div class="modal-container" style="max-width: 500px;">
-    <div class="modal-header">
-      <h2>➕ Cadastrar Novo Cliente</h2>
-    </div>
-
-    <form id="cadastroClienteForm" onsubmit="cadastrarCliente(event)">
-      <div class="form-group-login">
-        <label for="cadastroRazaoSocial">Razão Social</label>
-        <input type="text" id="cadastroRazaoSocial" placeholder="Ex: Estacionamento Central Ltda" required>
-      </div>
-
-      <div class="form-group-login">
-        <label for="cadastroNomeFantasia">Nome Fantasia</label>
-        <input type="text" id="cadastroNomeFantasia" placeholder="Ex: Estacionamento Central">
-      </div>
-
-      <div class="form-group-login">
-        <label for="cadastroCNPJ">CNPJ</label>
-        <input type="text" id="cadastroCNPJ" placeholder="00.000.000/0000-00">
-      </div>
-
-      <div class="form-group-login">
-        <label for="cadastroEmail">E-mail</label>
-        <input type="email" id="cadastroEmail" placeholder="contato@estacionamento.com">
-      </div>
-
-      <div class="form-group-login">
-        <label for="cadastroTelefone">Telefone</label>
-        <input type="tel" id="cadastroTelefone" placeholder="(00) 00000-0000">
-      </div>
-
-      <hr style="border-color: #3498db; margin: 20px 0;">
-
-      <div class="form-group-login">
-        <label for="cadastroUsuario">Usuário Admin</label>
-        <input type="text" id="cadastroUsuario" placeholder="admin" required>
-      </div>
-
-      <div class="form-group-login">
-        <label for="cadastroSenha">Senha Admin</label>
-        <input type="password" id="cadastroSenha" placeholder="******" required minlength="4">
-      </div>
-
-      <div class="form-actions">
-        <button type="button" class="btn-warning" onclick="fecharCadastroCliente()" style="flex: 1;">❌ Cancelar</button>
-        <button type="submit" class="btn-primary" style="flex: 1;">✅ Cadastrar</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Tela de Login -->
-<div id="loginScreen" class="login-screen">
-  <div class="login-container">
-    <div class="login-box">
-      <div class="login-header">
-        <h1>🅿️ Controle de Estacionamento</h1>
-        <p id="nomeClienteLogin"></p>
-      </div>
-
-      <form id="loginForm" onsubmit="fazerLogin(event)">
-        <div class="form-group-login">
-          <label for="loginUsuario">👤 Usuário</label>
-          <input type="text" id="loginUsuario" placeholder="Digite seu usuário" value="admin">
-        </div>
-
-        <div class="form-group-login">
-          <label for="loginSenha">🔒 Senha</label>
-          <input type="password" id="loginSenha" placeholder="Digite sua senha" required autofocus>
-        </div>
-
-        <button type="submit" class="btn-login">🔓 Entrar</button>
-      </form>
-
-      <div style="margin-top: 15px; text-align: center;">
-        <button class="btn-login" onclick="mostrarSelecaoCliente()" style="background: #7f8c8d; font-size: 12px;">🔄 Trocar Cliente</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal de Troca de Senha -->
-<div id="modalTrocaSenha" class="modal-overlay" style="display: none;">
-  <div class="modal-container">
-    <div class="modal-header">
-      <h2>🔐 Trocar Senha</h2>
-    </div>
-
-    <div class="alert-info">
-      ⚠️ É necessário trocar a senha padrão para continuar usando o sistema.
-    </div>
-
-    <form id="trocaSenhaForm" onsubmit="trocarSenha(event)">
-      <div class="form-group-login">
-        <label for="novaSenha">🔒 Nova Senha</label>
-        <input type="password" id="novaSenha" placeholder="Digite a nova senha" required minlength="4" autofocus>
-      </div>
-
-      <div class="form-group-login">
-        <label for="confirmarNovaSenha">🔒 Confirmar Nova Senha</label>
-        <input type="password" id="confirmarNovaSenha" placeholder="Confirme a nova senha" required>
-      </div>
-
-      <div class="form-actions">
-        <button type="submit" class="btn-trocar-senha">✅ Trocar Senha</button>
-      </div>
-    </form>
-  </div>
-</div>
-
 <!-- Menu Lateral -->
-<div class="sidebar" id="sidebar" style="display: none;">
+<div class="sidebar" id="sidebar">
   <h2>🅿️ Controle de Estacionamento</h2>
   <button class="menu-btn active" onclick="showSection('entrada')">🚗 Entrada de Veículos</button>
   <button class="menu-btn" onclick="showSection('patio')">🅿️ Pátio</button>
   <button class="menu-btn" onclick="showSection('saida')">💰 Saída / Pagamento</button>
   <button class="menu-btn" onclick="showSection('historico')">📊 Histórico</button>
-  <button class="menu-btn" onclick="showSection('relatorios')">📋 Relatórios</button>
-  <button class="menu-btn" onclick="showSection('configuracoes')">⚙️ Configurações</button>
-  
+  <button class="menu-btn" onclick="showSection('sistema')">🔧 Sistema</button>
+
   <div class="logout-section">
     <button class="menu-btn btn-logout" onclick="fazerLogout()">🚪 Sair</button>
     <div class="user-info">
@@ -165,7 +31,7 @@
 </div>
 
 <!-- Conteúdo Principal -->
-<div class="main-content" id="mainContent" style="display: none;">
+<div class="main-content" id="mainContent">
 
   <!-- Seção: Entrada -->
   <div id="entrada" class="section active">
@@ -198,7 +64,7 @@
         </select>
       </div>
       <div class="form-row">
-        <select id="veiculoModelo" onchange="preencherModeloOutro()">
+        <select id="veiculoModelo">
           <option value="">Selecione a marca primeiro...</option>
         </select>
         <input type="text" id="veiculoModeloOutro" placeholder="Digite o modelo (Outra)" style="display: none;">
@@ -336,7 +202,7 @@
       <div class="form-row">
         <input type="date" id="dataInicio" onchange="renderHistorico()">
         <input type="date" id="dataFim" onchange="renderHistorico()">
-        <input type="text" id="buscaHistorico" placeholder="Buscar por placa, nome ou telefone..." onkeyup="renderHistorico()">
+        <input type="text" id="buscaHistorico" placeholder="Buscar por placa..." onkeyup="renderHistorico()">
       </div>
     </div>
 
@@ -360,8 +226,6 @@
         <tr>
           <th>Placa</th>
           <th>Marca/Modelo</th>
-          <th>Proprietário</th>
-          <th>Telefone</th>
           <th>Tipo</th>
           <th>Entrada</th>
           <th>Saída</th>
@@ -374,395 +238,18 @@
     </table>
   </div>
 
-  <!-- Seção: Relatórios -->
-  <div id="relatorios" class="section">
-    <h1>📋 Relatórios</h1>
-
-    <!-- Submenu de Relatórios -->
-    <div class="form-group">
-      <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-        <button class="btn-primary" id="btnRelatorioEntradas" onclick="mostrarSubRelatorio('entradas')">🚗 Entradas de Veículos</button>
-        <button class="btn-info" id="btnRelatorioEntradasSaidas" onclick="mostrarSubRelatorio('entradas-saidas')">Entradas e Saídas</button>
-        <button class="btn-info" id="btnRelatorioFaturamento" onclick="mostrarSubRelatorio('faturamento')">Faturamento</button>
-        <button class="btn-info" id="btnRelatorioVagas" onclick="mostrarSubRelatorio('vagas')">Vagas</button>
-      </div>
-    </div>
-
-    <!-- Relatório de Entradas -->
-    <div id="subRelatorioEntradas">
-      <div class="form-group">
-        <h3 style="margin-bottom: 15px;">Filtros do Relatório</h3>
-        <div class="form-row">
-          <label>Data Início:</label>
-          <input type="date" id="relDataInicio">
-        </div>
-        <div class="form-row">
-          <label>Data Fim:</label>
-          <input type="date" id="relDataFim">
-        </div>
-        <div class="form-row">
-          <label>Tipo de Veículo:</label>
-          <select id="relTipoVeiculo">
-            <option value="">Todos os tipos</option>
-            <option value="carro">🚗 Carros</option>
-            <option value="moto">🏍️ Motos</option>
-            <option value="caminhao">🚚 Caminhões</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <input type="text" id="relBusca" placeholder="Buscar por placa ou modelo...">
-        </div>
-        <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-          <button class="btn-primary" onclick="gerarRelatorioEntradas()">🔍 Gerar Relatório</button>
-          <button class="btn-info" onclick="imprimirRelatorioEntradasPDF()">📄 Imprimir PDF</button>
-          <button class="btn-warning" onclick="limparFiltrosRelatorio()">🧹 Limpar Filtros</button>
-        </div>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value" id="relTotalEntradas">0</div>
-          <div class="stat-label">Total de Entradas</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="relTotalCarros">0</div>
-          <div class="stat-label">Carros</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="relTotalMotos">0</div>
-          <div class="stat-label">Motos</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="relTotalCaminhoes">0</div>
-          <div class="stat-label">Caminhões</div>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <h3 style="margin-bottom: 15px;">Resultado do Relatório</h3>
-        <table id="tabelaRelatorio">
-          <thead>
-            <tr>
-              <th>Placa</th>
-              <th>Marca/Modelo</th>
-              <th>Cor</th>
-              <th>Tipo</th>
-              <th>Proprietário</th>
-              <th>Telefone</th>
-              <th>Vaga</th>
-              <th>Data/Hora Entrada</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Relatório de Entradas e Saídas -->
-    <div id="subRelatorioEntradasSaidas" style="display: none;">
-      <div class="form-group">
-        <h3 style="margin-bottom: 15px;">Filtros do Relatório</h3>
-        <div class="form-row">
-          <label>Data Início:</label>
-          <input type="date" id="relESDataInicio">
-        </div>
-        <div class="form-row">
-          <label>Data Fim:</label>
-          <input type="date" id="relESDataFim">
-        </div>
-        <div class="form-row">
-          <label>Tipo de Veículo:</label>
-          <select id="relESTipoVeiculo">
-            <option value="">Todos os tipos</option>
-            <option value="carro">🚗 Carros</option>
-            <option value="moto">🏍️ Motos</option>
-            <option value="caminhao">🚚 Caminhões</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <input type="text" id="relESBusca" placeholder="Buscar por placa ou modelo...">
-        </div>
-        <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-          <button class="btn-primary" onclick="gerarRelatorioEntradasSaidas()">🔍 Gerar Relatório</button>
-          <button class="btn-info" onclick="imprimirRelatorioEntradasSaidasPDF()">📄 Imprimir PDF</button>
-          <button class="btn-warning" onclick="limparFiltrosRelatorioES()">🧹 Limpar Filtros</button>
-        </div>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value" id="relESTotalRegistros">0</div>
-          <div class="stat-label">Total de Registros</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="relESTotalNoPatio">0</div>
-          <div class="stat-label">No Pátio</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="relESTotalSaidas">0</div>
-          <div class="stat-label">Saídas</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="relESTempoMedio">0h</div>
-          <div class="stat-label">Tempo Médio</div>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <h3 style="margin-bottom: 15px;">Resultado do Relatório</h3>
-        <table id="tabelaRelatorioES">
-          <thead>
-            <tr>
-              <th>Placa</th>
-              <th>Marca/Modelo</th>
-              <th>Tipo</th>
-              <th>Data e Hora de Entrada</th>
-              <th>Data e Hora de Saída</th>
-              <th>Tempo de Permanência</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Relatório de Faturamento -->
-    <div id="subRelatorioFaturamento" style="display: none;">
-      <div class="form-group">
-        <h3 style="margin-bottom: 15px;">Filtros do Relatório</h3>
-        <div class="form-row">
-          <label>Data Início:</label>
-          <input type="date" id="relFatDataInicio">
-        </div>
-        <div class="form-row">
-          <label>Data Fim:</label>
-          <input type="date" id="relFatDataFim">
-        </div>
-        <div class="form-row">
-          <label>Forma de Pagamento:</label>
-          <select id="relFatFormaPagamento">
-            <option value="">Todas as formas</option>
-            <option value="dinheiro">💵 Dinheiro</option>
-            <option value="pix">📱 PIX</option>
-            <option value="cartao">💳 Cartão</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label>Tipo de Veículo:</label>
-          <select id="relFatTipoVeiculo">
-            <option value="">Todos os tipos</option>
-            <option value="carro">🚗 Carros</option>
-            <option value="moto">🏍️ Motos</option>
-            <option value="caminhao">🚚 Caminhões</option>
-          </select>
-        </div>
-        <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-          <button class="btn-primary" onclick="gerarRelatorioFaturamento()">🔍 Gerar Relatório</button>
-          <button class="btn-info" onclick="imprimirRelatorioFaturamentoPDF()">📄 Imprimir PDF</button>
-          <button class="btn-warning" onclick="limparFiltrosRelatorioFat()">🧹 Limpar Filtros</button>
-        </div>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value" id="relFatTotalArrecadado" style="color: #27ae60;">R$ 0,00</div>
-          <div class="stat-label">Total Arrecadado</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="relFatTotalSaidas">0</div>
-          <div class="stat-label">Total de Saídas</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="relFatTicketMedio">R$ 0,00</div>
-          <div class="stat-label">Ticket Médio</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="relFatValorDia" style="color: #e67e22;">R$ 0,00</div>
-          <div class="stat-label">Valor Total do Dia</div>
-        </div>
-      </div>
-
-      <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
-        <div class="stat-card">
-          <div class="stat-value" id="relFatDinheiro" style="color: #27ae60;">R$ 0,00</div>
-          <div class="stat-label">💵 Dinheiro</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="relFatPix" style="color: #8e44ad;">R$ 0,00</div>
-          <div class="stat-label">📱 PIX</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="relFatCartao" style="color: #2980b9;">R$ 0,00</div>
-          <div class="stat-label">💳 Cartão</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="relFatValorCarros" style="color: #3498db;">R$ 0,00</div>
-          <div class="stat-label">🚗 Carros</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="relFatValorMotos" style="color: #e67e22;">R$ 0,00</div>
-          <div class="stat-label">🏍️ Motos</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="relFatValorCaminhoes" style="color: #9b59b6;">R$ 0,00</div>
-          <div class="stat-label">🚚 Caminhões</div>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <h3 style="margin-bottom: 15px;">Resumo por Dia</h3>
-        <table id="tabelaResumoDiario">
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Total Saídas</th>
-              <th>Dinheiro</th>
-              <th>PIX</th>
-              <th>Cartão</th>
-              <th>Total do Dia</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-
-      <div class="form-group">
-        <h3 style="margin-bottom: 15px;">Detalhamento por Veículo</h3>
-        <table id="tabelaRelatorioFaturamento">
-          <thead>
-            <tr>
-              <th>Placa</th>
-              <th>Marca/Modelo</th>
-              <th>Tipo</th>
-              <th>Entrada</th>
-              <th>Saída</th>
-              <th>Tempo</th>
-              <th>Valor</th>
-              <th>Forma Pagto</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Relatório de Vagas -->
-    <div id="subRelatorioVagas" style="display: none;">
-      <div class="form-group">
-        <h3 style="margin-bottom: 15px;">Visão Geral das Vagas</h3>
-        <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-          <button class="btn-primary" onclick="renderRelatorioVagas()">🔄 Atualizar</button>
-          <button class="btn-info" onclick="imprimirRelatorioVagasPDF()">📄 Imprimir PDF</button>
-        </div>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value" id="relVagasTotal">0</div>
-          <div class="stat-label">Total de Vagas</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="relVagasOcupadas" style="color: #e74c3c;">0</div>
-          <div class="stat-label">Vagas Ocupadas</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="relVagasLivres" style="color: #27ae60;">0</div>
-          <div class="stat-label">Vagas Livres</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="relVagasOcupacao" style="color: #f39c12;">0%</div>
-          <div class="stat-label">Taxa de Ocupação</div>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <h3 style="margin-bottom: 15px;">Mapa de Vagas</h3>
-        <div class="vagas-container" id="relVagasContainer"></div>
-      </div>
-
-      <div class="form-group">
-        <h3 style="margin-bottom: 15px;">Veículos Estacionados</h3>
-        <table id="tabelaVagasOcupadas">
-          <thead>
-            <tr>
-              <th>Vaga</th>
-              <th>Placa</th>
-              <th>Marca/Modelo</th>
-              <th>Cor</th>
-              <th>Tipo</th>
-              <th>Entrada</th>
-              <th>Tempo</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- Seção: Configurações -->
-  <div id="configuracoes" class="section">
-    <h1>⚙️ Configurações</h1>
+  <!-- Seção: Sistema -->
+  <div id="sistema" class="section">
+    <h1>🔧 Sistema</h1>
 
     <div class="form-group">
-      <h3 style="margin-bottom: 15px;">Valores por Hora</h3>
-      <div class="form-row">
-        <label>🚗 Carro:</label>
-        <input type="number" id="valorHoraCarro" placeholder="R$" step="0.50" value="10.00">
-      </div>
-      <div class="form-row">
-        <label>🏍️ Moto:</label>
-        <input type="number" id="valorHoraMoto" placeholder="R$" step="0.50" value="5.00">
-      </div>
-      <div class="form-row">
-        <label>🚚 Caminhão:</label>
-        <input type="number" id="valorHoraCaminhao" placeholder="R$" step="0.50" value="20.00">
-      </div>
-      <button class="btn-primary" onclick="salvarValores()">💾 Salvar Valores</button>
-    </div>
-
-    <div class="form-group">
-      <h3 style="margin-bottom: 15px;">Quantidade de Vagas</h3>
-      <div class="form-row">
-        <label>Total de Vagas:</label>
-        <input type="number" id="totalVagas" placeholder="Número de vagas" value="20">
-      </div>
-      <button class="btn-primary" onclick="salvarVagas()">💾 Salvar Vagas</button>
-    </div>
-
-    <div class="form-group">
-      <h3 style="margin-bottom: 15px;">Nome do Estacionamento</h3>
-      <div class="form-row">
-        <input type="text" id="nomeEstacionamento" placeholder="Nome do estabelecimento" style="flex: 2;">
-      </div>
-      <button class="btn-primary" onclick="salvarNomeEstacionamento()">💾 Salvar</button>
-    </div>
-
-    <div class="form-group">
-      <h3 style="margin-bottom: 15px;">🔐 Segurança</h3>
-      <button class="btn-info" onclick="abrirTrocaSenha()">🔑 Trocar Senha</button>
-    </div>
-
-    <div class="form-group">
-      <h3 style="margin-bottom: 15px;">Backup dos Dados</h3>
-      <div style="display: flex; gap: 10px;">
-        <button class="btn-info" onclick="exportarDados()">📥 Exportar Dados</button>
-        <button class="btn-warning" onclick="document.getElementById('importFile').click()">📤 Importar Dados</button>
-        <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importarDados(this)">
-      </div>
-    </div>
-
-    <div class="form-group">
-      <h3 style="margin-bottom: 15px; color: #e74c3c;">⚠️ Zona de Perigo</h3>
-      <button class="btn-danger" onclick="limparHistorico()">🗑️ Limpar Histórico</button>
-      <button class="btn-danger" onclick="resetarSistema()" style="margin-left: 10px;">⚠️ Resetar Todo o Sistema</button>
+      <h3 style="margin-bottom: 15px;">Gerenciar Dados</h3>
+      <button class="btn-primary" onclick="limparHistorico()" style="margin-right: 10px;">🗑️ Limpar Histórico</button>
+      <button class="btn-danger" onclick="resetarSistema()">⚠️ Resetar Sistema</button>
     </div>
   </div>
 
 </div>
 
-<script src="script.js"></script>
 </body>
 </html>

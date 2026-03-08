@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Controle de Estacionamento</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="login.js" defer></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      width: 100%;
+      max-width: 450px;
+    }
+    .login-box {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .login-header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+    .login-header h1 {
+      color: #fff;
+      font-size: 26px;
+      margin: 0 0 8px 0;
+    }
+    .login-header p {
+      color: #95a5a6;
+      font-size: 14px;
+      margin: 0;
+    }
+    .cliente-secao {
+      margin-bottom: 20px;
+    }
+    .cliente-secao label {
+      display: block;
+      color: #fff;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .cliente-select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.95);
+      color: #1a1a2e;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .cliente-select:focus {
+      outline: none;
+      border-color: #3498db;
+    }
+    .form-group-login {
+      margin-bottom: 15px;
+    }
+    .form-group-login label {
+      display: block;
+      color: #fff;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+    .form-group-login input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.95);
+      color: #1a1a2e;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    .form-group-login input:focus {
+      outline: none;
+      border-color: #3498db;
+    }
+    .btn-login {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #3498db, #2980b9);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-top: 10px;
+    }
+    .btn-login:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(52, 152, 219, 0.4);
+    }
+    .btn-novo-cliente {
+      width: 100%;
+      padding: 10px;
+      background: linear-gradient(135deg, #27ae60, #229954);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-top: 10px;
+    }
+    .btn-novo-cliente:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(39, 174, 96, 0.4);
+    }
+    .error-message {
+      background: rgba(231, 76, 60, 0.2);
+      border: 1px solid #e74c3c;
+      border-radius: 8px;
+      padding: 10px;
+      color: #e74c3c;
+      font-size: 13px;
+      margin-bottom: 15px;
+      display: none;
+    }
+    .success-message {
+      background: rgba(39, 174, 96, 0.2);
+      border: 1px solid #27ae60;
+      border-radius: 8px;
+      padding: 10px;
+      color: #27ae60;
+      font-size: 13px;
+      margin-bottom: 15px;
+      display: none;
+    }
+    .loading {
+      text-align: center;
+      color: #95a5a6;
+      font-size: 13px;
+      padding: 10px;
+    }
+    .loading-spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .divider {
+      text-align: center;
+      margin: 15px 0;
+      position: relative;
+    }
+    .divider::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 100%;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .divider span {
+      background: #1a1a2e;
+      padding: 0 10px;
+      color: #95a5a6;
+      font-size: 11px;
+      position: relative;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal.active {
+      display: flex;
+    }
+    .modal-content {
+      background: #1a1a2e;
+      border-radius: 20px;
+      padding: 25px;
+      width: 100%;
+      max-width: 450px;
+      max-height: 90vh;
+      overflow-y: auto;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .modal-header h2 {
+      color: #fff;
+      font-size: 18px;
+      margin: 0;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      color: #95a5a6;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-close:hover {
+      color: #fff;
+    }
+    .form-group {
+      margin-bottom: 12px;
+    }
+    .form-group label {
+      display: block;
+      color: #fff;
+      margin-bottom: 5px;
+      font-size: 12px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 9px 11px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.95);
+      color: #1a1a2e;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #3498db;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .footer-info {
+      text-align: center;
+      margin-top: 15px;
+      color: #6c757d;
+      font-size: 11px;
+    }
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="login-box">
+      <div class="login-header">
+        <h1>🅿️ Controle de Estacionamento</h1>
+        <p>Faça login para acessar o sistema</p>
+      </div>
+
+      <div id="errorMessage" class="error-message"></div>
+      <div id="successMessage" class="success-message"></div>
+
+      <div id="loadingClientes" class="loading" style="display: none;">
+        <div class="loading-spinner"></div>
+        Carregando clientes...
+      </div>
+
+      <form id="loginForm" onsubmit="fazerLogin(event)">
+        <div class="cliente-secao" id="clienteSelecao">
+          <label for="clienteSelect">🏢 Selecione o Cliente</label>
+          <select id="clienteSelect" class="cliente-select" required>
+            <option value="">Carregando clientes...</option>
+          </select>
+        </div>
+
+        <div class="divider">
+          <span>ou</span>
+        </div>
+
+        <button type="button" class="btn-novo-cliente" onclick="abrirModalCadastro()">
+          ➕ Novo Cliente
+        </button>
+
+        <div class="divider">
+          <span>Credenciais de Acesso</span>
+        </div>
+
+        <div class="form-group-login">
+          <label for="loginUsuario">👤 Usuário</label>
+          <input type="text" id="loginUsuario" placeholder="Digite seu usuário" required autofocus>
+        </div>
+
+        <div class="form-group-login">
+          <label for="loginSenha">🔒 Senha</label>
+          <input type="password" id="loginSenha" placeholder="Digite sua senha" required>
+        </div>
+
+        <button type="submit" class="btn-login" id="btnLogin">
+          🔓 Entrar
+        </button>
+      </form>
+
+      <div class="footer-info">
+        <p>Insira suas credenciais de acesso</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Cadastro de Cliente -->
+  <div id="modalCadastro" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>➕ Novo Cliente</h2>
+        <button class="modal-close" onclick="fecharModalCadastro()">×</button>
+      </div>
+
+      <div id="modalErrorMessage" class="error-message"></div>
+      <div id="modalSuccessMessage" class="success-message"></div>
+
+      <form id="formCadastro" onsubmit="cadastrarCliente(event)">
+        <div class="form-group">
+          <label for="razaoSocial">Razão Social *</label>
+          <input type="text" id="razaoSocial" required placeholder="Ex: Estacionamento XYZ Ltda">
+        </div>
+
+        <div class="form-group">
+          <label for="nomeFantasia">Nome Fantasia *</label>
+          <input type="text" id="nomeFantasia" required placeholder="Ex: Estacionamento XYZ">
+        </div>
+
+        <div class="divider">
+          <span>Usuário Administrador</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="adminUsuario">Usuário *</label>
+            <input type="text" id="adminUsuario" required placeholder="admin">
+          </div>
+          <div class="form-group">
+            <label for="adminSenha">Senha *</label>
+            <input type="password" id="adminSenha" required placeholder="••••••">
+          </div>
+        </div>
+
+        <button type="submit" class="btn-novo-cliente" id="btnCadastrar" style="margin-top: 15px;">
+          ✅ Cadastrar Cliente
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function abrirModalCadastro() {
+      document.getElementById('modalCadastro').classList.add('active');
+      document.getElementById('razaoSocial').focus();
+    }
+
+    function fecharModalCadastro() {
+      document.getElementById('modalCadastro').classList.remove('active');
+      limparFormCadastro();
+    }
+
+    function limparFormCadastro() {
+      document.getElementById('formCadastro').reset();
+      document.getElementById('modalErrorMessage').style.display = 'none';
+      document.getElementById('modalSuccessMessage').style.display = 'none';
+    }
+
+    // Fechar modal com ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        fecharModalCadastro();
+      }
+    });
+
+    // Fechar modal clicando fora
+    document.getElementById('modalCadastro')?.addEventListener('click', (e) => {
+      if (e.target.id === 'modalCadastro') {
+        fecharModalCadastro();
+      }
+    });
+  </script>
+</body>
+</html>

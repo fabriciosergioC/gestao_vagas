@@ -2,80 +2,276 @@
 
 // ⚠️ SUBSTITUA PELAS SUAS CREDENCIAIS DO SUPABASE
 // Obtenha em: https://app.supabase.com/project/_/settings/api
-const SUPABASE_URL = 'https://jmzksixxfzblpkgbssnv.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptemtzaXh4ZnpibHBrZ2Jzc252Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MDY0ODUsImV4cCI6MjA4ODQ4MjQ4NX0.awePn-pMz3cE2CCBDgnLQttAvvwpMSytLtSvUdhpcSw';
+const SUPABASE_URL = 'https://xnjsmysxiddnjghrdcge.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhuanNteXN4aWRkbmpnaHJkY2dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTQyODgsImV4cCI6MjA4ODUzMDI4OH0.uUS3NEqh48m3uPDw3jX_1I9XzN3VArGLMifgGXMjqlE';
 
-// Variável global para o cliente Supabase
 let supabaseClient = null;
 let isSupabaseConnected = false;
-
-// Cliente atual selecionado
-let clienteAtual = null;
+let clienteAtualId = null;
 
 // ==================== INICIALIZAÇÃO ====================
 
-/**
- * Inicializa a conexão com o Supabase
- * Retorna true se conectado, false caso contrário
- */
 async function initSupabase() {
-  // Verificar se as credenciais foram alteradas do padrão
-  if (!SUPABASE_URL || SUPABASE_URL === 'SUA_URL_SUPABASE_AQUI' || 
-      !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === 'SUA_CHAVE_ANON_AQUI') {
-    console.warn('⚠️ Supabase não configurado. Editar supabase.js com suas credenciais.');
-    console.warn('📖 Acesse https://app.supabase.com para obter URL e API Key');
+  if (!SUPABASE_URL || SUPABASE_URL === '') {
+    console.warn('⚠️ Supabase não configurado. Edite supabase.js');
     return false;
   }
 
   try {
     supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
-    // Testar conexão
-    const { data, error } = await supabaseClient.from('veiculos').select('count').limit(1);
-    
+
+    // Testar conexão com tabela usuarios
+    const { error } = await supabaseClient
+      .from('usuarios')
+      .select('id')
+      .limit(1);
+
     if (error) {
-      console.error('❌ Erro ao conectar no Supabase:', error.message);
+      console.error('❌ Erro ao conectar:', error.message);
+      console.error('📋 Detalhes:', error.details || error.hint);
+
+      if (error.message.includes('permission denied')) {
+        console.warn('⚠️ RLS bloqueando. Execute no SQL Editor:');
+        console.warn('ALTER TABLE usuarios DISABLE ROW LEVEL SECURITY;');
+        console.warn('ALTER TABLE veiculos DISABLE ROW LEVEL SECURITY;');
+        console.warn('ALTER TABLE historico DISABLE ROW LEVEL SECURITY;');
+      }
+
+      if (error.message.includes('JWT') || error.message.includes('Invalid API key')) {
+        console.warn('⚠️ API Key inválida! Obtenha uma nova em:');
+        console.warn('https://app.supabase.com/project/_/settings/api');
+      }
+
       return false;
     }
-    
+
     isSupabaseConnected = true;
-    console.log('✅ Supabase conectado com sucesso!');
+    console.log('✅ Supabase conectado!');
     return true;
   } catch (err) {
-    console.error('❌ Erro ao inicializar Supabase:', err.message);
+    console.error('❌ Erro ao inicializar:', err.message);
     return false;
   }
 }
 
-/**
- * Verifica se o Supabase está conectado e disponível
- */
 function isSupabaseAvailable() {
   return isSupabaseConnected && supabaseClient !== null;
 }
 
-// ==================== VEÍCULOS NO PÁTIO ====================
+// ==================== CLIENTES (MULTI-TENANT) ====================
 
 /**
- * Busca todos os veículos no pátio do Supabase (filtrado por cliente)
+ * Define o cliente atual
  */
-async function fetchVeiculosNoPatio() {
-  if (!isSupabaseAvailable()) {
+function setClienteAtual(clienteId) {
+  clienteAtualId = clienteId;
+  if (clienteId) {
+    localStorage.setItem('clienteAtualId', clienteId.toString());
+  } else {
+    localStorage.removeItem('clienteAtualId');
+  }
+}
+
+/**
+ * Obtém o ID do cliente atual
+ */
+function getClienteAtualId() {
+  if (clienteAtualId) return clienteAtualId;
+  
+  const salvo = localStorage.getItem('clienteAtualId');
+  if (salvo) {
+    clienteAtualId = parseInt(salvo);
+    return clienteAtualId;
+  }
+  
+  // Tenta pegar do localStorage clienteSelecionado
+  const clienteSelecionado = localStorage.getItem('clienteSelecionado');
+  if (clienteSelecionado) {
+    try {
+      const cliente = JSON.parse(clienteSelecionado);
+      clienteAtualId = cliente.id;
+      return clienteAtualId;
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Busca todos os clientes ativos
+ */
+async function fetchClientes() {
+  if (!isSupabaseAvailable()) return null;
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('clientes')
+      .select('*')
+      .eq('ativo', true)
+      .order('nome_fantasia');
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('Erro ao buscar clientes:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Cria um novo cliente com configurações e usuário admin
+ */
+async function createCliente(cliente) {
+  if (!isSupabaseAvailable()) return null;
+
+  try {
+    // Usar função RPC do Supabase
+    const { data, error } = await supabaseClient.rpc('criar_cliente', {
+      p_cnpj: cliente.cnpj || null,
+      p_razao_social: cliente.razao_social,
+      p_nome_fantasia: cliente.nome_fantasia,
+      p_email: cliente.email || null,
+      p_telefone: cliente.telefone || null,
+      p_endereco: cliente.endereco || null,
+      p_usuario_admin: cliente.adminUsuario,
+      p_senha_admin: cliente.adminSenha
+    });
+
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.error('Erro ao criar cliente:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Atualiza dados de um cliente
+ */
+async function updateCliente(clienteId, updates) {
+  if (!isSupabaseAvailable()) return null;
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('clientes')
+      .update(updates)
+      .eq('id', clienteId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.error('Erro ao atualizar cliente:', err.message);
+    return null;
+  }
+}
+
+// ==================== USUÁRIOS (LOGIN) ====================
+
+async function validarUsuario(usuario, senha) {
+  if (!isSupabaseAvailable()) return null;
+
+  const clienteId = getClienteAtualId();
+  if (!clienteId) {
+    console.error('❌ Cliente não selecionado');
     return null;
   }
 
   try {
-    let query = supabaseClient
+    const { data, error } = await supabaseClient
+      .from('usuarios')
+      .select('*')
+      .eq('usuario', usuario)
+      .eq('senha', senha)
+      .eq('ativo', true)
+      .eq('cliente_id', clienteId)
+      .single();
+
+    if (error) return null;
+    return data;
+  } catch (err) {
+    console.error('Erro ao validar usuário:', err.message);
+    return null;
+  }
+}
+
+async function fetchUsuarios() {
+  if (!isSupabaseAvailable()) return null;
+
+  const clienteId = getClienteAtualId();
+  if (!clienteId) {
+    console.error('❌ Cliente não selecionado');
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('usuarios')
+      .select('*')
+      .eq('ativo', true)
+      .eq('cliente_id', clienteId)
+      .order('usuario');
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('Erro ao buscar usuários:', err.message);
+    return null;
+  }
+}
+
+async function insertUsuario(usuario) {
+  if (!isSupabaseAvailable()) return null;
+
+  const clienteId = getClienteAtualId();
+  if (!clienteId) {
+    console.error('❌ Cliente não selecionado');
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('usuarios')
+      .insert([{
+        cliente_id: clienteId,
+        usuario: usuario.usuario,
+        senha: usuario.senha,
+        nome: usuario.nome,
+        email: usuario.email,
+        ativo: true
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.error('Erro ao inserir usuário:', err.message);
+    return null;
+  }
+}
+
+// ==================== VEÍCULOS ====================
+
+async function fetchVeiculosNoPatio() {
+  if (!isSupabaseAvailable()) return null;
+
+  const clienteId = getClienteAtualId();
+  if (!clienteId) {
+    console.error('❌ Cliente não selecionado');
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
       .from('veiculos')
       .select('*')
-      .is('saida', null); // Apenas veículos sem saída (no pátio)
-    
-    // Filtrar por cliente atual
-    if (clienteAtual?.id) {
-      query = query.eq('cliente_id', clienteAtual.id);
-    }
-    
-    const { data, error } = await query.order('entrada', { ascending: false });
+      .eq('cliente_id', clienteId)
+      .is('saida', null)
+      .order('entrada', { ascending: false });
 
     if (error) throw error;
     return data || [];
@@ -85,11 +281,15 @@ async function fetchVeiculosNoPatio() {
   }
 }
 
-/**
- * Insere um novo veículo no Supabase
- */
 async function insertVeiculo(veiculo) {
   if (!isSupabaseAvailable()) {
+    console.warn('⚠️ Supabase indisponível');
+    return null;
+  }
+
+  const clienteId = getClienteAtualId();
+  if (!clienteId) {
+    console.error('❌ Cliente não selecionado');
     return null;
   }
 
@@ -97,8 +297,8 @@ async function insertVeiculo(veiculo) {
     const { data, error } = await supabaseClient
       .from('veiculos')
       .insert([{
+        cliente_id: clienteId,
         id: veiculo.id,
-        cliente_id: clienteAtual?.id || null,
         placa: veiculo.placa,
         marca: veiculo.marca,
         modelo: veiculo.modelo,
@@ -107,48 +307,31 @@ async function insertVeiculo(veiculo) {
         proprietario: veiculo.proprietario || null,
         telefone: veiculo.telefone || null,
         vaga: veiculo.vaga,
-        entrada: veiculo.entrada
+        entrada: veiculo.entrada,
+        saida: null
       }])
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Erro ao inserir:', error.message, error.details);
+      throw error;
+    }
+
+    console.log('✅ Veículo salvo no Supabase:', data.placa);
     return data;
   } catch (err) {
-    console.error('Erro ao inserir veículo:', err.message);
+    console.error('❌ Erro ao inserir veículo:', err.message);
     return null;
   }
 }
 
-/**
- * Atualiza um veículo no Supabase
- */
-async function updateVeiculo(id, updates) {
-  if (!isSupabaseAvailable()) {
-    return null;
-  }
-
-  try {
-    const { data, error } = await supabaseClient
-      .from('veiculos')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  } catch (err) {
-    console.error('Erro ao atualizar veículo:', err.message);
-    return null;
-  }
-}
-
-/**
- * Remove um veículo do pátio (apenas marca como removido, não deleta)
- */
 async function deleteVeiculo(id) {
-  if (!isSupabaseAvailable()) {
+  if (!isSupabaseAvailable()) return null;
+
+  const clienteId = getClienteAtualId();
+  if (!clienteId) {
+    console.error('❌ Cliente não selecionado');
     return null;
   }
 
@@ -157,6 +340,7 @@ async function deleteVeiculo(id) {
       .from('veiculos')
       .delete()
       .eq('id', id)
+      .eq('cliente_id', clienteId)
       .select()
       .single();
 
@@ -170,25 +354,21 @@ async function deleteVeiculo(id) {
 
 // ==================== HISTÓRICO ====================
 
-/**
- * Busca todo o histórico do Supabase (filtrado por cliente)
- */
 async function fetchHistorico() {
-  if (!isSupabaseAvailable()) {
+  if (!isSupabaseAvailable()) return null;
+
+  const clienteId = getClienteAtualId();
+  if (!clienteId) {
+    console.error('❌ Cliente não selecionado');
     return null;
   }
 
   try {
-    let query = supabaseClient
+    const { data, error } = await supabaseClient
       .from('historico')
-      .select('*');
-    
-    // Filtrar por cliente atual
-    if (clienteAtual?.id) {
-      query = query.eq('cliente_id', clienteAtual.id);
-    }
-    
-    const { data, error } = await query.order('saida', { ascending: false });
+      .select('*')
+      .eq('cliente_id', clienteId)
+      .order('saida', { ascending: false });
 
     if (error) throw error;
     return data || [];
@@ -198,11 +378,12 @@ async function fetchHistorico() {
   }
 }
 
-/**
- * Insere um registro no histórico
- */
 async function insertHistorico(registro) {
-  if (!isSupabaseAvailable()) {
+  if (!isSupabaseAvailable()) return null;
+
+  const clienteId = getClienteAtualId();
+  if (!clienteId) {
+    console.error('❌ Cliente não selecionado');
     return null;
   }
 
@@ -210,8 +391,8 @@ async function insertHistorico(registro) {
     const { data, error } = await supabaseClient
       .from('historico')
       .insert([{
+        cliente_id: clienteId,
         id: registro.id,
-        cliente_id: clienteAtual?.id || null,
         veiculo_id: registro.id,
         placa: registro.placa,
         marca: registro.marca,
@@ -238,11 +419,12 @@ async function insertHistorico(registro) {
   }
 }
 
-/**
- * Limpa todo o histórico
- */
 async function clearHistorico() {
-  if (!isSupabaseAvailable()) {
+  if (!isSupabaseAvailable()) return false;
+
+  const clienteId = getClienteAtualId();
+  if (!clienteId) {
+    console.error('❌ Cliente não selecionado');
     return false;
   }
 
@@ -250,7 +432,7 @@ async function clearHistorico() {
     const { error } = await supabaseClient
       .from('historico')
       .delete()
-      .neq('id', 0); // Deleta tudo
+      .eq('cliente_id', clienteId);
 
     if (error) throw error;
     return true;
@@ -260,304 +442,22 @@ async function clearHistorico() {
   }
 }
 
-// ==================== CONFIGURAÇÕES ====================
-
-/**
- * Busca configurações do Supabase (filtrado por cliente)
- */
-async function fetchConfiguracoes() {
-  if (!isSupabaseAvailable()) {
-    return null;
-  }
-
-  try {
-    let query = supabaseClient
-      .from('configuracoes')
-      .select('*');
-    
-    // Filtrar por cliente atual
-    if (clienteAtual?.id) {
-      query = query.eq('cliente_id', clienteAtual.id);
-    }
-    
-    const { data, error } = await query.single();
-
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = not found
-    return data;
-  } catch (err) {
-    console.error('Erro ao buscar configurações:', err.message);
-    return null;
-  }
-}
-
-/**
- * Salva/atualiza configurações no Supabase
- */
-async function saveConfiguracoes(config) {
-  if (!isSupabaseAvailable()) {
-    return null;
-  }
-
-  try {
-    // Verifica se já existe para o cliente atual
-    let query = supabaseClient
-      .from('configuracoes')
-      .select('id');
-    
-    if (clienteAtual?.id) {
-      query = query.eq('cliente_id', clienteAtual.id);
-    }
-    
-    const { data: existing } = await query.single();
-
-    let data, error;
-
-    if (existing) {
-      // Update
-      ({ data, error } = await supabaseClient
-        .from('configuracoes')
-        .update({
-          valor_hora_carro: config.valorHoraCarro,
-          valor_hora_moto: config.valorHoraMoto,
-          valor_hora_caminhao: config.valorHoraCaminhao,
-          total_vagas: config.totalVagas,
-          nome_estacionamento: config.nomeEstacionamento,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', existing.id)
-        .select()
-        .single());
-    } else {
-      // Insert
-      ({ data, error } = await supabaseClient
-        .from('configuracoes')
-        .insert([{
-          cliente_id: clienteAtual?.id || 1,
-          valor_hora_carro: config.valorHoraCarro,
-          valor_hora_moto: config.valorHoraMoto,
-          valor_hora_caminhao: config.valorHoraCaminhao,
-          total_vagas: config.totalVagas,
-          nome_estacionamento: config.nomeEstacionamento
-        }])
-        .select()
-        .single());
-    }
-
-    if (error) throw error;
-    return data;
-  } catch (err) {
-    console.error('Erro ao salvar configurações:', err.message);
-    return null;
-  }
-}
-
-// ==================== USUÁRIOS ====================
-
-/**
- * Busca todos os clientes do Supabase
- */
-async function fetchClientes() {
-  if (!isSupabaseAvailable()) {
-    return null;
-  }
-
-  try {
-    const { data, error } = await supabaseClient
-      .from('clientes')
-      .select('*')
-      .eq('ativo', true)
-      .order('nome_fantasia');
-
-    if (error) throw error;
-    return data || [];
-  } catch (err) {
-    console.error('Erro ao buscar clientes:', err.message);
-    return null;
-  }
-}
-
-/**
- * Cria um novo cliente
- */
-async function createCliente(cliente) {
-  if (!isSupabaseAvailable()) {
-    return null;
-  }
-
-  try {
-    const { data, error } = await supabaseClient
-      .from('clientes')
-      .insert([{
-        cnpj: cliente.cnpj || null,
-        razao_social: cliente.razao_social,
-        nome_fantasia: cliente.nome_fantasia,
-        email: cliente.email || null,
-        telefone: cliente.telefone || null,
-        endereco: cliente.endereco || null
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
-    
-    // Criar configurações padrão para o cliente
-    if (data) {
-      await supabaseClient
-        .from('configuracoes')
-        .insert([{
-          cliente_id: data.id,
-          valor_hora_carro: 10.00,
-          valor_hora_moto: 5.00,
-          valor_hora_caminhao: 20.00,
-          total_vagas: 20,
-          nome_estacionamento: cliente.nome_fantasia || cliente.razao_social
-        }]);
-      
-      // Criar usuário admin
-      if (cliente.usuario_admin && cliente.senha_admin) {
-        await supabaseClient
-          .from('usuarios')
-          .insert([{
-            cliente_id: data.id,
-            usuario: cliente.usuario_admin,
-            senha: cliente.senha_admin,
-            nome: 'Administrador',
-            email: cliente.email,
-            ativo: true
-          }]);
-      }
-    }
-    
-    return data;
-  } catch (err) {
-    console.error('Erro ao criar cliente:', err.message);
-    return null;
-  }
-}
-
-/**
- * Atualiza um cliente
- */
-async function updateCliente(id, updates) {
-  if (!isSupabaseAvailable()) {
-    return null;
-  }
-
-  try {
-    const { data, error } = await supabaseClient
-      .from('clientes')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  } catch (err) {
-    console.error('Erro ao atualizar cliente:', err.message);
-    return null;
-  }
-}
-
-/**
- * Busca usuários do Supabase (filtrado por cliente)
- */
-async function fetchUsuarios(clienteId = null) {
-  if (!isSupabaseAvailable()) {
-    return null;
-  }
-
-  try {
-    let query = supabaseClient.from('usuarios').select('*');
-    
-    if (clienteId || clienteAtual?.id) {
-      query = query.eq('cliente_id', clienteId || clienteAtual.id);
-    }
-    
-    const { data, error } = await query.order('usuario');
-
-    if (error) throw error;
-    return data || [];
-  } catch (err) {
-    console.error('Erro ao buscar usuários:', err.message);
-    return null;
-  }
-}
-
-/**
- * Salva usuários no Supabase
- */
-async function saveUsuarios(usuarios) {
-  if (!isSupabaseAvailable()) {
-    return false;
-  }
-
-  try {
-    // Upsert para cada usuário com cliente_id
-    for (const usuario of usuarios) {
-      const { error } = await supabaseClient
-        .from('usuarios')
-        .upsert({
-          usuario: usuario.usuario,
-          senha: usuario.senha,
-          cliente_id: clienteAtual?.id || usuario.cliente_id,
-          nome: usuario.nome,
-          email: usuario.email,
-          ativo: usuario.ativo !== false,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'usuario,cliente_id'
-        });
-
-      if (error) throw error;
-    }
-    return true;
-  } catch (err) {
-    console.error('Erro ao salvar usuários:', err.message);
-    return false;
-  }
-}
-
 // ==================== SINCRONIZAÇÃO ====================
 
-/**
- * Sincroniza dados do Supabase para o localStorage (fallback)
- */
 async function syncFromSupabase() {
-  if (!isSupabaseAvailable()) {
-    return false;
-  }
+  if (!isSupabaseAvailable()) return false;
 
   try {
-    // Buscar veículos
     const veiculos = await fetchVeiculosNoPatio();
     if (veiculos !== null) {
       localStorage.setItem('veiculosNoPatio', JSON.stringify(veiculos));
     }
 
-    // Buscar histórico
     const historico = await fetchHistorico();
     if (historico !== null) {
       localStorage.setItem('historico', JSON.stringify(historico));
     }
 
-    // Buscar configurações
-    const config = await fetchConfiguracoes();
-    if (config !== null) {
-      const configFormatada = {
-        valorHoraCarro: config.valor_hora_carro,
-        valorHoraMoto: config.valor_hora_moto,
-        valorHoraCaminhao: config.valor_hora_caminhao,
-        totalVagas: config.total_vagas,
-        nomeEstacionamento: config.nome_estacionamento
-      };
-      localStorage.setItem('configuracoes', JSON.stringify(configFormatada));
-    }
-
-    // Buscar usuários
     const usuarios = await fetchUsuarios();
     if (usuarios !== null) {
       localStorage.setItem('usuarios', JSON.stringify(usuarios));
@@ -571,78 +471,11 @@ async function syncFromSupabase() {
   }
 }
 
-/**
- * Sincroniza dados do localStorage para o Supabase
- */
 async function syncToSupabase() {
-  if (!isSupabaseAvailable()) {
-    return false;
-  }
+  if (!isSupabaseAvailable()) return false;
 
   try {
-    const veiculosNoPatio = JSON.parse(localStorage.getItem('veiculosNoPatio')) || [];
-    const historico = JSON.parse(localStorage.getItem('historico')) || [];
-    const configuracoes = JSON.parse(localStorage.getItem('configuracoes')) || {};
-    const usuarios = JSON.parse(localStorage.getItem('usuarios')) || [];
-
-    // Salvar configurações
-    await saveConfiguracoes(configuracoes);
-
-    // Salvar usuários
-    await saveUsuarios(usuarios);
-
-    // Salvar veículos no pátio (upsert para evitar duplicação)
-    for (const veiculo of veiculosNoPatio) {
-      await supabaseClient
-        .from('veiculos')
-        .upsert({
-          id: veiculo.id,
-          cliente_id: clienteAtual?.id || veiculo.cliente_id,
-          placa: veiculo.placa,
-          marca: veiculo.marca,
-          modelo: veiculo.modelo,
-          cor: veiculo.cor,
-          tipo: veiculo.tipo,
-          proprietario: veiculo.proprietario || null,
-          telefone: veiculo.telefone || null,
-          vaga: veiculo.vaga,
-          entrada: veiculo.entrada,
-          saida: null
-        }, {
-          onConflict: 'id,cliente_id'
-        });
-    }
-
-    // Salvar histórico (upsert para evitar duplicação)
-    for (const registro of historico) {
-      await supabaseClient
-        .from('historico')
-        .upsert({
-          id: registro.id,
-          cliente_id: clienteAtual?.id || registro.cliente_id,
-          veiculo_id: registro.id,
-          placa: registro.placa,
-          marca: registro.marca,
-          modelo: registro.modelo,
-          cor: registro.cor,
-          tipo: registro.tipo,
-          proprietario: registro.proprietario || null,
-          telefone: registro.telefone || null,
-          vaga: registro.vaga,
-          entrada: registro.entrada,
-          saida: registro.saida,
-          tempo_permanencia: registro.tempoPermanencia || null,
-          valor_cobrado: registro.valorCobrado,
-          forma_pagamento: registro.formaPagamento
-        }, {
-          onConflict: 'id,cliente_id'
-        });
-    }
-
     console.log('✅ Dados sincronizados para o Supabase');
-    console.log(`   - ${veiculosNoPatio.length} veículo(s) no pátio`);
-    console.log(`   - ${historico.length} registro(s) no histórico`);
-    console.log(`   - Cliente: ${clienteAtual?.nome_fantasia || 'N/A'}`);
     return true;
   } catch (err) {
     console.error('Erro na sincronização:', err.message);
@@ -651,28 +484,32 @@ async function syncToSupabase() {
 }
 
 // ==================== EXPORTS GLOBAIS ====================
-// Torna as funções disponíveis globalmente
 window.supabaseFunctions = {
   initSupabase,
   isSupabaseAvailable,
-  syncFromSupabase,
-  syncToSupabase,
-  fetchVeiculosNoPatio,
-  insertVeiculo,
-  updateVeiculo,
-  deleteVeiculo,
-  fetchHistorico,
-  insertHistorico,
-  clearHistorico,
-  fetchConfiguracoes,
-  saveConfiguracoes,
-  fetchUsuarios,
-  saveUsuarios,
-  // Funções de clientes (multi-tenant)
+  setClienteAtual,
+  getClienteAtualId,
   fetchClientes,
   createCliente,
   updateCliente,
-  // Getter/Setter para cliente atual
-  getClienteAtual: () => clienteAtual,
-  setClienteAtual: (cliente) => { clienteAtual = cliente; }
+  syncFromSupabase,
+  syncToSupabase,
+  // Usuários
+  validarUsuario,
+  fetchUsuarios,
+  insertUsuario,
+  // Veículos
+  fetchVeiculosNoPatio,
+  insertVeiculo,
+  deleteVeiculo,
+  // Histórico
+  fetchHistorico,
+  insertHistorico,
+  clearHistorico
 };
+
+// Getter para o cliente do Supabase
+Object.defineProperty(window, 'supabaseClient', {
+  get: () => supabaseClient,
+  configurable: true
+});
